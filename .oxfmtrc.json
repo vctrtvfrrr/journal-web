@@ -1,0 +1,12 @@
+{
+  "ignorePatterns": [
+    "contract/**",
+    "src/api/generated/**",
+    "src/components/ui/**",
+    "src/lib/menu-styles.ts",
+    "src/lib/theme.tsx",
+    "src/lib/use-media-query.ts",
+    "src/lib/utils.ts",
+    "src/index.css"
+  ]
+}

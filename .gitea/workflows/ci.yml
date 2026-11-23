@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: 1.4.5
+
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run fmt:check
+      - run: bun test
+
+      - name: Contract matches the published API release
+        run: bun run contract:check
+        env:
+          API_CONTRACT_TOKEN: ${{ secrets.API_CONTRACT_TOKEN }}
+
+      - name: Generated client matches the contract
+        run: |
+          bun run gen
+          test -z "$(git status --porcelain -- src/api/generated)" || { git status --short -- src/api/generated; exit 1; }
+
+      - run: bun run build

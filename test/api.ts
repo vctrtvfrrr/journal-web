@@ -1,0 +1,35 @@
+import { HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+import type { Device, Problem, ValidationProblem } from "../src/api/generated";
+
+export const api = setupServer();
+
+export const device: Device = {
+  id: "0193b3a0-0000-7000-8000-000000000001",
+  name: "Firefox on Linux",
+  user_agent: "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0",
+  created_at: "2026-11-23T10:00:00Z",
+  last_used_at: "2026-11-23T10:00:00Z",
+};
+
+export function problem(status: number, detail: string, headers?: HeadersInit) {
+  const body: Problem = { type: "about:blank", title: "Error", status, detail };
+  return HttpResponse.json(body, {
+    status,
+    headers: { "content-type": "application/problem+json", ...headers },
+  });
+}
+
+export function validationProblem(errors: ValidationProblem["errors"]) {
+  const body: ValidationProblem = {
+    type: "about:blank",
+    title: "Bad Request",
+    status: 400,
+    detail: "The request has invalid fields.",
+    errors,
+  };
+  return HttpResponse.json(body, {
+    status: 400,
+    headers: { "content-type": "application/problem+json" },
+  });
+}
