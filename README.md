@@ -33,16 +33,16 @@ As respostas da API são validadas em runtime com os schemas gerados. Uma respos
 
 ## Scripts
 
-| Script                | O que faz                                                              |
-| --------------------- | ---------------------------------------------------------------------- |
-| `dev`                 | Servidor de desenvolvimento com HMR e proxy de `/api`.                 |
-| `build`               | Gera os arquivos estáticos de produção em `dist/public`.               |
-| `start`               | Serve `dist/public` em modo produção, com CSP e headers de cache.      |
-| `typecheck`           | Checa os tipos com o TypeScript 7.                                     |
-| `lint`, `fmt`         | `oxlint` e `oxfmt`. `fmt:check` só verifica.                           |
-| `gen`                 | Regenera `src/api/generated` a partir de `contract/openapi.json`.      |
-| `contract:pull <ref>` | Baixa o contrato de uma tag, branch ou commit da API e regenera.       |
-| `contract:check`      | Falha se `contract/openapi.json` diferir do contrato publicado na tag. |
+| Script                | O que faz                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| `dev`                 | Servidor de desenvolvimento com proxy de `/api`. Recarregue a página para ver mudanças. |
+| `build`               | Gera os arquivos estáticos de produção em `dist/public`.                                |
+| `start`               | Serve `dist/public` em modo produção, com CSP e headers de cache.                       |
+| `typecheck`           | Checa os tipos com o TypeScript 7.                                                      |
+| `lint`, `fmt`         | `oxlint` e `oxfmt`. `fmt:check` só verifica.                                            |
+| `gen`                 | Regenera `src/api/generated` a partir de `contract/openapi.json`.                       |
+| `contract:pull <ref>` | Baixa o contrato de uma tag, branch ou commit da API e regenera.                        |
+| `contract:check`      | Falha se `contract/openapi.json` diferir do contrato publicado na tag.                  |
 
 O `bun test` roda os testes. Os testes de UI usam happy-dom, Testing Library e MSW.
 

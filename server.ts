@@ -68,7 +68,9 @@ async function serveDevelopment(port: number) {
   const proxy = createApiProxy(Bun.env.API_ORIGIN ?? "http://localhost:3000");
   return Bun.serve({
     port,
-    development: { hmr: true, console: true },
+    // Bun's HMR runtime breaks on the circular import inside @tanstack/router-core,
+    // so the page reloads with a fresh bundle instead of hot-swapping modules.
+    development: { hmr: false, console: true },
     routes: {
       "/api/*": proxy,
       "/icons/:file": (request) => new Response(Bun.file(`public/icons/${request.params.file}`)),
