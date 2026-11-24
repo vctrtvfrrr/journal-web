@@ -60,9 +60,9 @@ test("lists pending tasks with priority, status and description, and hides compl
   const rent = within(rows[0]!);
   expect(rent.getByText("P1")).toBeDefined();
   expect(
-    rent.getByRole("link", { name: "Pay rent", description: "Transfer before the 5th" }),
+    rent.getByRole("button", { name: "Pay rent", description: "Transfer before the 5th" }),
   ).toBeDefined();
-  expect(within(rows[1]!).getByRole("link", { name: "Read a chapter" })).toBeDefined();
+  expect(within(rows[1]!).getByRole("button", { name: "Read a chapter" })).toBeDefined();
   expect(rent.getByRole("checkbox", { name: "Pay rent: doing" }).getAttribute("aria-checked")).toBe(
     "mixed",
   );
@@ -95,8 +95,8 @@ test("lists tasks in progress first within each priority, keeping the API order 
   await screen.findByRole("list", { name: "Pending tasks" });
   expect(
     pendingList()
-      .getAllByRole("link")
-      .map((link) => link.textContent),
+      .getAllByRole("button")
+      .map((row) => row.textContent),
   ).toEqual(["File taxes", "Call the bank", "Write notes", "Water plants", "Clean desk"]);
 });
 
@@ -127,7 +127,7 @@ test("lists completed tasks by most recently updated first", async () => {
 
   await userEvent.click(await screen.findByRole("button", { name: /^Completed/ }));
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
-  expect(completed.getAllByRole("link").map((link) => link.textContent)).toEqual([
+  expect(completed.getAllByRole("button").map((row) => row.textContent)).toEqual([
     "Return books",
     "Fix the bike",
     "Renew passport",
@@ -244,7 +244,7 @@ test("puts a task completed just now at the top of the completed list before the
   await userEvent.click(screen.getByRole("button", { name: /^Completed/ }));
 
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
-  expect(completed.getAllByRole("link").map((link) => link.textContent)).toEqual([
+  expect(completed.getAllByRole("button").map((row) => row.textContent)).toEqual([
     "Write a letter",
     "Buy milk",
   ]);
@@ -299,7 +299,7 @@ test("edits title, description and priority in the dialog opened from the title"
   const patches = serveEditableTasks([urgent]);
   const history = renderAppAt("/");
 
-  await userEvent.click(await screen.findByRole("link", { name: "Pay rent" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Pay rent" }));
   const dialog = within(await screen.findByRole("dialog", { name: "Edit task" }));
   expect(history.location.pathname).toBe(`/tasks/${urgent.id}`);
   const title = dialog.getByLabelText("Title");
@@ -307,7 +307,7 @@ test("edits title, description and priority in the dialog opened from the title"
   await userEvent.type(title, "Pay the rent");
   await userEvent.clear(dialog.getByLabelText("Description"));
   await userEvent.click(dialog.getByRole("radio", { name: "P2" }));
-  await userEvent.click(dialog.getByRole("button", { name: "Save" }));
+  await userEvent.click(dialog.getByRole("button", { name: "save" }));
 
   expect(await pendingListFound("Pay the rent")).toBeDefined();
   expect(screen.queryByRole("dialog")).toBeNull();
@@ -321,11 +321,11 @@ test("edits a completed task from its title", async () => {
   const history = renderAppAt("/");
 
   await userEvent.click(await screen.findByRole("button", { name: /^Completed/ }));
-  await userEvent.click(screen.getByRole("link", { name: "Buy milk" }));
+  await userEvent.click(screen.getByRole("button", { name: "Buy milk" }));
   const dialog = within(await screen.findByRole("dialog", { name: "Edit task" }));
   expect(history.location.pathname).toBe(`/tasks/${finished.id}`);
   await userEvent.type(dialog.getByLabelText("Title"), " and eggs");
-  await userEvent.click(dialog.getByRole("button", { name: "Save" }));
+  await userEvent.click(dialog.getByRole("button", { name: "save" }));
 
   await waitFor(() => expect(history.location.pathname).toBe("/"));
   expect(patches).toEqual([{ title: "Buy milk and eggs", description: "", priority: 2 }]);
@@ -408,4 +408,48 @@ test("a failed status change rolls back only its own task", async () => {
   expect(await screen.findByText("Couldn't update task.")).toBeDefined();
   expect(pendingList().getByRole("checkbox", { name: "Read a chapter: todo" })).toBeDefined();
   expect(screen.queryByRole("checkbox", { name: "Pay rent: doing" })).toBeNull();
+});
+
+test("opens a task from the keyboard", async () => {
+  serveEditableTasks([reading]);
+  const history = renderAppAt("/");
+
+  (await screen.findByRole("button", { name: "Read a chapter" })).focus();
+  await userEvent.keyboard("{Enter}");
+
+  expect(await screen.findByRole("dialog", { name: "Edit task" })).toBeDefined();
+  expect(history.location.pathname).toBe(`/tasks/${reading.id}`);
+});
+
+test("renders inline Markdown in the title and description, and only that", async () => {
+  serveTasks([
+    aTask({
+      title: "Read **Dune** and ~~Emma~~",
+      description: "# Chapter `one`\n\n| a | b |\n| - | - |\n| 1 | 2 |",
+    }),
+  ]);
+  renderAppAt("/");
+
+  const row = within(await pendingListFound("Dune").then((title) => title.closest("li")!));
+  expect(row.getByText("Dune").tagName).toBe("STRONG");
+  expect(row.getByText("Emma").tagName).toBe("DEL");
+  expect(row.getByText("one").tagName).toBe("CODE");
+  expect(row.queryByRole("heading")).toBeNull();
+  expect(row.queryByRole("table")).toBeNull();
+  expect(row.getByRole("button", { name: "Read Dune and Emma" })).toBeDefined();
+});
+
+test("opens links in the title in a new tab without opening the task", async () => {
+  serveTasks([aTask({ title: "Read [the docs](https://example.com/docs)" })]);
+  const history = renderAppAt("/");
+
+  const link = await screen.findByRole("link", { name: "the docs" });
+  expect(link.getAttribute("href")).toBe("https://example.com/docs");
+  expect(link.getAttribute("target")).toBe("_blank");
+  expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  link.addEventListener("click", (event) => event.preventDefault());
+  await userEvent.click(link);
+
+  expect(history.location.pathname).toBe("/");
+  expect(screen.queryByRole("dialog")).toBeNull();
 });

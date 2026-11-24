@@ -1,7 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useId } from "react";
 import type { Task } from "../api/generated";
+import { activationHandlers } from "../lib/activation";
 import { cn } from "../lib/utils";
+import { Markdown } from "./markdown";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -33,6 +35,10 @@ function TaskRow({ task }: { task: Task }) {
   const id = useId();
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
+  const navigate = useNavigate();
+  const openOnActivate = activationHandlers(
+    () => void navigate({ to: "/tasks/$taskId", params: { taskId: task.id } }),
+  );
 
   return (
     <li
@@ -44,28 +50,26 @@ function TaskRow({ task }: { task: Task }) {
       <div className="flex min-h-6 items-start justify-center self-stretch border-r border-border py-0.5">
         <TaskCheckbox task={task} />
       </div>
-      <Link
-        to="/tasks/$taskId"
-        params={{ taskId: task.id }}
+      <div
+        {...openOnActivate}
+        role="button"
+        tabIndex={0}
         aria-labelledby={titleId}
         aria-describedby={task.description ? descriptionId : undefined}
-        className="group flex min-w-0 flex-col justify-center self-stretch px-[1ch] py-0.5 focus-visible:outline-offset-[-1px]"
+        className="group flex min-w-0 cursor-pointer flex-col justify-center self-stretch px-[1ch] py-0.5 focus-visible:outline-offset-[-1px]"
       >
-        <span
-          id={titleId}
-          className="wrap-anywhere whitespace-pre-wrap group-hover:text-accent-ink"
-        >
-          {task.title}
+        <span id={titleId} className="wrap-anywhere group-hover:text-accent-ink">
+          <Markdown level="inline">{task.title}</Markdown>
         </span>
         {task.description && (
           <span
             id={descriptionId}
             className="hidden truncate text-xs text-muted-foreground sm:block"
           >
-            {task.description}
+            <Markdown level="inline">{task.description}</Markdown>
           </span>
         )}
-      </Link>
+      </div>
       <div className="flex items-center justify-center self-stretch py-0.5">
         <PriorityBadge task={task} />
       </div>

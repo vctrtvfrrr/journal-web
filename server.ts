@@ -12,7 +12,7 @@ function inlineScriptHashes(html: string): string[] {
 function securityHeaders(shellHtml: string) {
   const scriptSources = ["'self'", ...inlineScriptHashes(shellHtml)].join(" ");
   return {
-    "content-security-policy": `default-src 'self'; script-src ${scriptSources}; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`,
+    "content-security-policy": `default-src 'self'; script-src ${scriptSources}; style-src 'self' 'unsafe-inline'; img-src 'self' https:; font-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`,
     "x-content-type-options": "nosniff",
     "referrer-policy": "no-referrer",
   };

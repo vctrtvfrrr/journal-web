@@ -50,7 +50,7 @@ describe("production server", () => {
   test("sends the security headers", async () => {
     const response = await get("/");
     expect(response.headers.get("content-security-policy")).toBe(
-      "default-src 'self'; script-src 'self' 'sha256-PyqdDJbZiMOnaPVUZdckDIEYE9FjYnLw6ic7lzTeXOs='; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+      "default-src 'self'; script-src 'self' 'sha256-PyqdDJbZiMOnaPVUZdckDIEYE9FjYnLw6ic7lzTeXOs='; style-src 'self' 'unsafe-inline'; img-src 'self' https:; font-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
     );
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
