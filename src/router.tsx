@@ -11,6 +11,7 @@ import { hasSession } from "./lib/session";
 import { ErrorPage } from "./routes/error";
 import { HomePage } from "./routes/home";
 import { LoginPage } from "./routes/login";
+import { TaskPage } from "./routes/task";
 
 type RouterContext = { queryClient: QueryClient };
 
@@ -30,16 +31,30 @@ const loginRoute = createRoute({
 
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/",
+  id: "home",
   beforeLoad: async ({ context }) => {
     if (!(await hasSession(context.queryClient))) throw redirect({ to: "/login" });
   },
   component: HomePage,
 });
 
+const taskListRoute = createRoute({
+  getParentRoute: () => homeRoute,
+  path: "/",
+});
+
+const taskRoute = createRoute({
+  getParentRoute: () => homeRoute,
+  path: "tasks/$taskId",
+  component: TaskPage,
+});
+
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {
   return createRouter({
-    routeTree: rootRoute.addChildren([loginRoute, homeRoute]),
+    routeTree: rootRoute.addChildren([
+      loginRoute,
+      homeRoute.addChildren([taskListRoute, taskRoute]),
+    ]),
     context: { queryClient },
     history,
   });

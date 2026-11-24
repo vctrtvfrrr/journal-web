@@ -1,8 +1,10 @@
-import { HttpResponse } from "msw";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import type { Device, Problem, ValidationProblem } from "../src/api/generated";
+import type { Device, Problem, Task, ValidationProblem } from "../src/api/generated";
 
-export const api = setupServer();
+export const api = setupServer(
+  http.get("/api/tasks", () => HttpResponse.json([] satisfies Task[])),
+);
 
 export const device: Device = {
   id: "0193b3a0-0000-7000-8000-000000000001",

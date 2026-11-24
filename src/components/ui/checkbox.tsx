@@ -16,7 +16,7 @@ function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxP
       <span className="inline-block w-[1ch] text-center font-bold text-accent-ink group-focus-visible:text-accent-foreground">
         <CheckboxPrimitive.Indicator data-slot="checkbox-indicator" className="contents">
           <span className="group-data-[state=indeterminate]:hidden">x</span>
-          <span className="hidden group-data-[state=indeterminate]:inline">-</span>
+          <span className="hidden group-data-[state=indeterminate]:inline">/</span>
         </CheckboxPrimitive.Indicator>
       </span>
       <span aria-hidden>]</span>
