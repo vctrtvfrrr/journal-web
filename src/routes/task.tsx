@@ -81,11 +81,14 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
   return (
     <form className="grid gap-3" onSubmit={submit} noValidate>
       <Field label="Title" htmlFor="task-title" error={errors.title?.message}>
-        <Input
-          id="task-title"
-          aria-invalid={!!errors.title}
-          {...form.register("title", { setValueAs: apiTrim })}
-        />
+        <div className="flex items-center gap-[1ch]">
+          <TaskCheckbox task={task} />
+          <Input
+            id="task-title"
+            aria-invalid={!!errors.title}
+            {...form.register("title", { setValueAs: apiTrim })}
+          />
+        </div>
       </Field>
       <Field label="Description" htmlFor="task-description" error={errors.description?.message}>
         <Textarea
@@ -162,15 +165,7 @@ export function TaskPage() {
             <AlertDescription>{describeError(task.error)}</AlertDescription>
           </Alert>
         )}
-        {task.data && (
-          <>
-            <div className="flex items-center gap-[1ch]">
-              <TaskCheckbox task={task.data} />
-              <span className="text-muted-foreground">{task.data.status}</span>
-            </div>
-            <TaskEditForm task={task.data} onDone={close} />
-          </>
-        )}
+        {task.data && <TaskEditForm task={task.data} onDone={close} />}
       </DialogContent>
     </Dialog>
   );

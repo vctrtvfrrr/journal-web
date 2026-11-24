@@ -295,3 +295,47 @@ test("deletes a task from its dialog and goes back to the list", async () => {
   await waitFor(() => expect(screen.queryByText("Pay rent")).toBeNull());
   expect(screen.queryByRole("dialog")).toBeNull();
 });
+
+test("sends status changes for one task one at a time", async () => {
+  const started: TaskChanges[] = [];
+  let answerFirst = () => {};
+  const firstAnswered = new Promise<void>((resolve) => (answerFirst = resolve));
+  serveTasks([reading]);
+  api.use(
+    http.patch("/api/tasks/:id", async ({ request }) => {
+      const body = (await request.json()) as TaskChanges;
+      started.push(body);
+      if (started.length === 1) await firstAnswered;
+      return HttpResponse.json({ ...reading, status: body.status ?? reading.status });
+    }),
+  );
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Read a chapter: todo" }));
+  await userEvent.click(pendingList().getByRole("checkbox", { name: "Read a chapter: doing" }));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(started).toEqual([{ status: "doing" }]);
+
+  answerFirst();
+  await waitFor(() => expect(started).toEqual([{ status: "doing" }, { status: "done" }]));
+});
+
+test("a failed status change rolls back only its own task", async () => {
+  serveTasks([urgent, reading]);
+  api.use(
+    http.patch("/api/tasks/:id", async ({ params, request }) => {
+      const body = (await request.json()) as TaskChanges;
+      if (params.id === reading.id) return problem(500, "The server failed.");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return HttpResponse.json({ ...urgent, status: body.status ?? urgent.status });
+    }),
+  );
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Pay rent: doing" }));
+  await userEvent.click(pendingList().getByRole("checkbox", { name: "Read a chapter: todo" }));
+
+  expect(await screen.findByText("Couldn't update task.")).toBeDefined();
+  expect(pendingList().getByRole("checkbox", { name: "Read a chapter: todo" })).toBeDefined();
+  expect(screen.queryByRole("checkbox", { name: "Pay rent: doing" })).toBeNull();
+});

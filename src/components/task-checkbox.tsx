@@ -17,24 +17,26 @@ function useTaskStatus(task: Task) {
   const queryClient = useQueryClient();
   const listKey = listTasksQueryKey();
   const taskKey = getTaskQueryKey({ path: { id: task.id } });
+  const setStatus = (status: TaskStatus) => {
+    const withStatus = (t: Task) => (t.id === task.id ? { ...t, status } : t);
+    queryClient.setQueryData<Task[]>(listKey, (tasks) => tasks?.map(withStatus));
+    queryClient.setQueryData<Task>(taskKey, (current) => current && withStatus(current));
+  };
 
   return useMutation({
     ...updateTaskMutation(),
     mutationKey: statusMutationKey,
     meta: { showsOwnError: true },
+    scope: { id: `task-status-${task.id}` },
     onMutate: async ({ body }) => {
       await queryClient.cancelQueries({ queryKey: listKey });
       await queryClient.cancelQueries({ queryKey: taskKey });
-      const previousList = queryClient.getQueryData<Task[]>(listKey);
-      const previousTask = queryClient.getQueryData<Task>(taskKey);
-      const withStatus = (t: Task) => (t.id === task.id ? { ...t, status: body!.status! } : t);
-      queryClient.setQueryData<Task[]>(listKey, (tasks) => tasks?.map(withStatus));
-      queryClient.setQueryData<Task>(taskKey, (current) => current && withStatus(current));
-      return { previousList, previousTask };
+      const previousStatus = task.status;
+      setStatus(body?.status ?? previousStatus);
+      return { previousStatus };
     },
     onError: (error, _variables, snapshot) => {
-      queryClient.setQueryData(listKey, snapshot?.previousList);
-      queryClient.setQueryData(taskKey, snapshot?.previousTask);
+      if (snapshot) setStatus(snapshot.previousStatus);
       if (!isUnauthorized(error))
         toast.error("Couldn't update task.", { description: describeError(error) });
     },

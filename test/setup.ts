@@ -16,6 +16,7 @@ const { afterAll, afterEach } = await import("bun:test");
 const { cleanup } = await import("@testing-library/react");
 const { api } = await import("./api");
 const { client } = await import("../src/api/generated/client.gen");
+const { toast } = await import("sonner");
 
 // Bun's Request needs an absolute URL, unlike the browser's.
 client.setConfig({ baseUrl: `${location.origin}/api` });
@@ -26,6 +27,7 @@ api.listen({
   },
 });
 afterEach(() => {
+  toast.dismiss();
   cleanup();
   api.resetHandlers();
 });

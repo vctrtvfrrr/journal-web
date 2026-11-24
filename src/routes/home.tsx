@@ -49,12 +49,8 @@ export function HomePage() {
             </AlertDescription>
           </Alert>
         )}
-        {tasks.data && (
-          <>
-            <TaskCreateForm />
-            <TaskList tasks={tasks.data} />
-          </>
-        )}
+        {tasks.data && !tasks.isError && <TaskCreateForm />}
+        {tasks.data && <TaskList tasks={tasks.data} />}
       </section>
       <Outlet />
     </JournalShell>

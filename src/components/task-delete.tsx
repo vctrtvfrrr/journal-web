@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Task } from "../api/generated";
 import { deleteTaskMutation, listTasksQueryKey } from "../api/generated/@tanstack/react-query.gen";
 import { describeError } from "../lib/problem";
+import { ErrorText } from "./field";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -57,11 +58,7 @@ export function TaskDelete({ task, onDeleted }: { task: Task; onDeleted?: () => 
         <p className="max-h-[35dvh] overflow-y-auto wrap-anywhere whitespace-pre-wrap">
           {task.title}
         </p>
-        {remove.isError && (
-          <p className="text-red-ink" role="alert">
-            {describeError(remove.error)}
-          </p>
-        )}
+        {remove.isError && <ErrorText>{describeError(remove.error)}</ErrorText>}
         <DialogFooter>
           <Button
             type="button"
