@@ -5,6 +5,7 @@ import { describeError, isProblem, isUnauthorized } from "./problem";
 declare module "@tanstack/react-query" {
   interface Register {
     queryMeta: { handledByRoute?: boolean };
+    mutationMeta: { showsOwnError?: boolean };
   }
 }
 
@@ -21,7 +22,11 @@ export function createQueryClient(onUnauthorized: () => void) {
         if (!query.meta?.handledByRoute) onError(error);
       },
     }),
-    mutationCache: new MutationCache({ onError }),
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _result, mutation) => {
+        if (!mutation.meta?.showsOwnError || isUnauthorized(error)) onError(error);
+      },
+    }),
     defaultOptions: { queries: { retry: false } },
   });
 }

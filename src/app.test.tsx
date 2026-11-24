@@ -1,16 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMemoryHistory } from "@tanstack/react-router";
 import { http, HttpResponse } from "msw";
-import { App } from "./app";
 import { api, device, problem, validationProblem } from "../test/api";
-
-function renderAppAt(path: string) {
-  const history = createMemoryHistory({ initialEntries: [path] });
-  render(<App history={history} />);
-  return history;
-}
+import { renderAppAt } from "../test/render";
 
 describe("boot", () => {
   test("asks for the master password when the browser has no session", async () => {
