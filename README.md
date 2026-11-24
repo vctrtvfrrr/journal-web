@@ -1,6 +1,6 @@
 # Journal Web
 
-Interface web (PWA instalável) da [Journal API](https://git.codelab.tec.br/vctrtvfrrr/journal-api). Bun + TypeScript + React, com os componentes do [ScanLine](https://vctrtvfrrr.github.io/scanline).
+Interface web (PWA instalável) da [Journal API](https://git.codelab.tec.br/vctrtvfrrr/journal-api). Bun + TypeScript + React.
 
 ## Rodar localmente
 
@@ -47,10 +47,6 @@ As respostas da API são validadas em runtime com os schemas gerados. Uma respos
 O `bun test` roda os testes. Os testes de UI usam happy-dom, Testing Library e MSW.
 
 O TypeScript aparece duas vezes nas dependências: o `typescript` (6) existe só porque o gerador usa a API JavaScript do compilador, que o TypeScript 7 não tem. O typecheck usa o `typescript-native` (7).
-
-## ScanLine
-
-Os arquivos de `src/components/ui/`, `src/lib/{menu-styles,theme,use-media-query,utils}.ts(x)` e `src/index.css` são copiados do ScanLine, no estilo shadcn. A única mudança é trocar os imports `@/...` por caminhos relativos. Para adicionar ou atualizar um componente, copie o arquivo do repositório do ScanLine e ajuste os imports.
 
 ## Produção
 

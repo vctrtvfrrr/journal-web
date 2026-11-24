@@ -10,7 +10,7 @@ type ThemeContextValue = {
   setCrt: (crt: boolean) => void;
 };
 
-const STORAGE_KEY = "scanline-theme";
+const STORAGE_KEY = "journal-theme";
 const ThemeContext = React.createContext<ThemeContextValue | null>(null);
 
 function readInitialTheme(): Theme {
