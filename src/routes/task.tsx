@@ -121,14 +121,14 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
         />
       </Field>
       {formError && <ErrorText>{formError}</ErrorText>}
-      <DialogFooter>
-        <TaskDelete task={task} onDeleted={onDone} />
-        <Button variant="outline" type="button" onClick={onDone} disabled={isSubmitting}>
-          Cancel
+      <DialogFooter className="flex-row">
+        <Button variant="default" size="sm" type="submit" disabled={isSubmitting}>
+          save
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          Save
+        <Button variant="secondary" size="sm" type="button" onClick={onDone} disabled={isSubmitting}>
+          cancel
         </Button>
+        <TaskDelete task={task} onDeleted={onDone} className="ml-auto" />
       </DialogFooter>
     </form>
   );

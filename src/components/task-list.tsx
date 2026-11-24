@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useId } from "react";
 import type { Task } from "../api/generated";
 import { cn } from "../lib/utils";
 import { Badge } from "./ui/badge";
@@ -6,7 +7,6 @@ import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { TaskCheckbox } from "./task-checkbox";
-import { TaskDelete } from "./task-delete";
 
 const priorityBadge = {
   1: "destructive",
@@ -30,48 +30,50 @@ function PriorityBadge({ task }: { task: Task }) {
 
 function TaskRow({ task }: { task: Task }) {
   const done = task.status === "done";
+  const id = useId();
+  const titleId = `${id}-title`;
+  const descriptionId = `${id}-description`;
 
   return (
     <li
       className={cn(
-        "grid min-h-6 grid-cols-[5ch_5ch_minmax(0,1fr)_auto] items-start border-b border-dashed border-border last:border-b-0 hover:bg-accent/8 focus-within:bg-accent/8",
+        "grid min-h-6 grid-cols-[5ch_minmax(0,1fr)_5ch] items-start border-b border-dashed border-border last:border-b-0 hover:bg-accent/8 focus-within:bg-accent/8",
         done && "text-muted-foreground",
       )}
     >
       <div className="flex min-h-6 items-start justify-center self-stretch border-r border-border py-0.5">
         <TaskCheckbox task={task} />
       </div>
-      <div className="flex justify-center py-0.5">
-        <PriorityBadge task={task} />
-      </div>
-      <div className="min-w-0 self-center px-[1ch] py-0.5">
-        <Link
-          to="/tasks/$taskId"
-          params={{ taskId: task.id }}
-          className="wrap-anywhere whitespace-pre-wrap hover:text-accent-ink hover:underline"
+      <Link
+        to="/tasks/$taskId"
+        params={{ taskId: task.id }}
+        aria-labelledby={titleId}
+        aria-describedby={task.description ? descriptionId : undefined}
+        className="group flex min-w-0 flex-col justify-center self-stretch px-[1ch] py-0.5 focus-visible:outline-offset-[-1px]"
+      >
+        <span
+          id={titleId}
+          className="wrap-anywhere whitespace-pre-wrap group-hover:text-accent-ink"
         >
           {task.title}
-        </Link>
+        </span>
         {task.description && (
-          <p className="truncate text-xs text-muted-foreground">{task.description}</p>
+          <span
+            id={descriptionId}
+            className="hidden truncate text-xs text-muted-foreground sm:block"
+          >
+            {task.description}
+          </span>
         )}
-      </div>
-      <div className="flex items-start self-stretch border-l border-border">
-        <Button asChild variant="bracket" size="sm">
-          <Link to="/tasks/$taskId" params={{ taskId: task.id }} aria-label={`Edit ${task.title}`}>
-            <span aria-hidden className="sm:hidden">
-              e
-            </span>
-            <span aria-hidden className="hidden sm:inline">
-              edit
-            </span>
-          </Link>
-        </Button>
-        <TaskDelete task={task} />
+      </Link>
+      <div className="flex items-center justify-center self-stretch py-0.5">
+        <PriorityBadge task={task} />
       </div>
     </li>
   );
 }
+
+const isDoing = (task: Task) => task.status === "doing";
 
 function TaskRows({ tasks, label }: { tasks: Task[]; label: string }) {
   return (
@@ -84,8 +86,12 @@ function TaskRows({ tasks, label }: { tasks: Task[]; label: string }) {
 }
 
 export function TaskList({ tasks }: { tasks: Task[] }) {
-  const pending = tasks.filter((task) => task.status !== "done");
-  const completed = tasks.filter((task) => task.status === "done");
+  const pending = tasks
+    .filter((task) => task.status !== "done")
+    .toSorted((a, b) => a.priority - b.priority || Number(isDoing(b)) - Number(isDoing(a)));
+  const completed = tasks
+    .filter((task) => task.status === "done")
+    .toSorted((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
 
   return (
     <>

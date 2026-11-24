@@ -17,8 +17,9 @@ function useTaskStatus(task: Task) {
   const queryClient = useQueryClient();
   const listKey = listTasksQueryKey();
   const taskKey = getTaskQueryKey({ path: { id: task.id } });
-  const setStatus = (status: TaskStatus) => {
-    const withStatus = (t: Task) => (t.id === task.id ? { ...t, status } : t);
+  const setStatus = (status: TaskStatus, updatedAt: string) => {
+    const withStatus = (t: Task) =>
+      t.id === task.id ? { ...t, status, updated_at: updatedAt } : t;
     queryClient.setQueryData<Task[]>(listKey, (tasks) => tasks?.map(withStatus));
     queryClient.setQueryData<Task>(taskKey, (current) => current && withStatus(current));
   };
@@ -31,12 +32,12 @@ function useTaskStatus(task: Task) {
     onMutate: async ({ body }) => {
       await queryClient.cancelQueries({ queryKey: listKey });
       await queryClient.cancelQueries({ queryKey: taskKey });
-      const previousStatus = task.status;
-      setStatus(body?.status ?? previousStatus);
-      return { previousStatus };
+      const previous = { status: task.status, updatedAt: task.updated_at };
+      setStatus(body?.status ?? previous.status, new Date().toISOString());
+      return previous;
     },
-    onError: (error, _variables, snapshot) => {
-      if (snapshot) setStatus(snapshot.previousStatus);
+    onError: (error, _variables, previous) => {
+      if (previous) setStatus(previous.status, previous.updatedAt);
       if (!isUnauthorized(error))
         toast.error("Couldn't update task.", { description: describeError(error) });
     },

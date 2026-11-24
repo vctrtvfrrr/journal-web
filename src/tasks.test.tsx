@@ -56,13 +56,13 @@ test("lists pending tasks with priority, status and description, and hides compl
 
   await screen.findByRole("list", { name: "Pending tasks" });
   const rows = pendingList().getAllByRole("listitem");
-  expect(rows.map((row) => within(row).getAllByRole("link")[0]!.textContent)).toEqual([
-    "Pay rent",
-    "Read a chapter",
-  ]);
+  expect(rows).toHaveLength(2);
   const rent = within(rows[0]!);
   expect(rent.getByText("P1")).toBeDefined();
-  expect(rent.getByText("Transfer before the 5th")).toBeDefined();
+  expect(
+    rent.getByRole("link", { name: "Pay rent", description: "Transfer before the 5th" }),
+  ).toBeDefined();
+  expect(within(rows[1]!).getByRole("link", { name: "Read a chapter" })).toBeDefined();
   expect(rent.getByRole("checkbox", { name: "Pay rent: doing" }).getAttribute("aria-checked")).toBe(
     "mixed",
   );
@@ -71,6 +71,67 @@ test("lists pending tasks with priority, status and description, and hides compl
   await userEvent.click(screen.getByRole("button", { name: /^Completed/ }));
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
   expect(completed.getByRole("checkbox", { name: "Buy milk: done" })).toBeDefined();
+});
+
+test("lists tasks in progress first within each priority, keeping the API order otherwise", async () => {
+  serveTasks([
+    aTask({ id: "0193b3a0-0000-7000-8000-000000000111", title: "Call the bank", priority: 1 }),
+    aTask({
+      id: "0193b3a0-0000-7000-8000-000000000112",
+      title: "File taxes",
+      priority: 1,
+      status: "doing",
+    }),
+    aTask({ id: "0193b3a0-0000-7000-8000-000000000113", title: "Water plants" }),
+    aTask({ id: "0193b3a0-0000-7000-8000-000000000114", title: "Clean desk" }),
+    aTask({
+      id: "0193b3a0-0000-7000-8000-000000000115",
+      title: "Write notes",
+      status: "doing",
+    }),
+  ]);
+  renderAppAt("/");
+
+  await screen.findByRole("list", { name: "Pending tasks" });
+  expect(
+    pendingList()
+      .getAllByRole("link")
+      .map((link) => link.textContent),
+  ).toEqual(["File taxes", "Call the bank", "Write notes", "Water plants", "Clean desk"]);
+});
+
+test("lists completed tasks by most recently updated first", async () => {
+  serveTasks([
+    aTask({
+      id: "0193b3a0-0000-7000-8000-000000000121",
+      title: "Renew passport",
+      status: "done",
+      priority: 1,
+      updated_at: "2026-11-20T09:00:00Z",
+    }),
+    aTask({
+      id: "0193b3a0-0000-7000-8000-000000000122",
+      title: "Return books",
+      status: "done",
+      updated_at: "2026-11-23T18:30:00.5Z",
+    }),
+    aTask({
+      id: "0193b3a0-0000-7000-8000-000000000123",
+      title: "Fix the bike",
+      status: "done",
+      priority: 5,
+      updated_at: "2026-11-22T12:00:00Z",
+    }),
+  ]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("button", { name: /^Completed/ }));
+  const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
+  expect(completed.getAllByRole("link").map((link) => link.textContent)).toEqual([
+    "Return books",
+    "Fix the bike",
+    "Renew passport",
+  ]);
 });
 
 test("says when there are no tasks yet", async () => {
@@ -168,6 +229,27 @@ test("cycles the status from todo to doing to done before the API answers", asyn
   await waitFor(() => expect(patches.at(-1)).toEqual({ status: "todo" }));
 });
 
+test("puts a task completed just now at the top of the completed list before the API answers", async () => {
+  const writing = aTask({
+    id: "0193b3a0-0000-7000-8000-000000000131",
+    title: "Write a letter",
+    status: "doing",
+    updated_at: "2026-11-01T10:00:00Z",
+  });
+  serveTasks([writing, finished]);
+  api.use(http.patch("/api/tasks/:id", () => new Promise<never>(() => {})));
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Write a letter: doing" }));
+  await userEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+
+  const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
+  expect(completed.getAllByRole("link").map((link) => link.textContent)).toEqual([
+    "Write a letter",
+    "Buy milk",
+  ]);
+});
+
 test("restores the status and warns when the API refuses the change", async () => {
   serveTasks([reading]);
   api.use(http.patch("/api/tasks/:id", () => problem(500, "The server failed.")));
@@ -234,24 +316,12 @@ test("edits title, description and priority in the dialog opened from the title"
   expect(patches).toEqual([{ title: "Pay the rent", description: "", priority: 2 }]);
 });
 
-test("deletes a task from the list after confirming", async () => {
-  serveEditableTasks([urgent, reading]);
-  renderAppAt("/");
-
-  await userEvent.click(await screen.findByRole("button", { name: "Delete Pay rent" }));
-  const confirm = within(await screen.findByRole("dialog", { name: "Delete task?" }));
-  await userEvent.click(confirm.getByRole("button", { name: "Delete task" }));
-
-  await waitFor(() => expect(screen.queryByText("Pay rent")).toBeNull());
-  expect(pendingList().getByText("Read a chapter")).toBeDefined();
-});
-
-test("edits a completed task from its edit button", async () => {
+test("edits a completed task from its title", async () => {
   const patches = serveEditableTasks([finished]);
   const history = renderAppAt("/");
 
   await userEvent.click(await screen.findByRole("button", { name: /^Completed/ }));
-  await userEvent.click(screen.getByRole("link", { name: "Edit Buy milk" }));
+  await userEvent.click(screen.getByRole("link", { name: "Buy milk" }));
   const dialog = within(await screen.findByRole("dialog", { name: "Edit task" }));
   expect(history.location.pathname).toBe(`/tasks/${finished.id}`);
   await userEvent.type(dialog.getByLabelText("Title"), " and eggs");

@@ -14,7 +14,15 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 
-export function TaskDelete({ task, onDeleted }: { task: Task; onDeleted?: () => void }) {
+export function TaskDelete({
+  task,
+  onDeleted,
+  className,
+}: {
+  task: Task;
+  onDeleted?: () => void;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const remove = useMutation({
@@ -39,17 +47,13 @@ export function TaskDelete({ task, onDeleted }: { task: Task; onDeleted?: () => 
       <DialogTrigger asChild>
         <Button
           type="button"
-          variant="bracket"
+          variant="destructive"
           size="sm"
+          className={className}
           aria-label={`Delete ${task.title}`}
           title="Delete task"
         >
-          <span aria-hidden className="sm:hidden">
-            d
-          </span>
-          <span aria-hidden className="hidden sm:inline">
-            del
-          </span>
+          <span aria-hidden>delete</span>
         </Button>
       </DialogTrigger>
       <DialogContent label="Delete task?" showCloseButton={false}>

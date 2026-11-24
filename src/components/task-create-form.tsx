@@ -41,7 +41,7 @@ export function TaskCreateForm() {
   });
 
   return (
-    <form className="flex min-w-0 items-start gap-[1ch]" onSubmit={submit} noValidate>
+    <form className="mb-2 flex min-w-0 items-start gap-[1ch]" onSubmit={submit} noValidate>
       <Field
         label="Task title"
         htmlFor={id}
