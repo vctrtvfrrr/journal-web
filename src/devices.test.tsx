@@ -139,3 +139,22 @@ test("keeps the device when the revoke is not confirmed", async () => {
   expect(dialog.getByRole("button", { name: `Revoke ${phone.name}` })).toBeDefined();
   expect(revoked).toEqual([]);
 });
+
+test("logs the browser out when this device is already gone", async () => {
+  let active = true;
+  api.use(
+    http.get("/api/devices/current", () =>
+      active ? HttpResponse.json(device) : problem(401, "Missing token."),
+    ),
+    http.delete("/api/devices/:id", () => {
+      active = false;
+      return problem(404, "Device not found.");
+    }),
+  );
+  const dialog = await openDevices();
+
+  await userEvent.click(await dialog.findByRole("button", { name: `Revoke ${device.name}` }));
+  await userEvent.click(dialog.getByRole("button", { name: "yes" }));
+
+  expect(await screen.findByLabelText("master password")).toBeDefined();
+});

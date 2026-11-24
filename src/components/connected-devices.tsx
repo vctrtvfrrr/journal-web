@@ -20,17 +20,17 @@ function DeviceRow({ device }: { device: ListedDevice }) {
   const [confirming, setConfirming] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const refreshDevices = () => queryClient.invalidateQueries({ queryKey: listDevicesQueryKey() });
+  const forget = () => {
+    if (!device.current) return queryClient.invalidateQueries({ queryKey: listDevicesQueryKey() });
+    queryClient.clear();
+    return navigate({ to: "/login" });
+  };
   const revoke = useMutation({
     ...revokeDeviceMutation(),
     meta: { showsOwnError: true },
-    onSuccess: () => {
-      if (!device.current) return refreshDevices();
-      queryClient.clear();
-      return navigate({ to: "/login" });
-    },
+    onSuccess: () => forget(),
     onError: (error) => {
-      if (isAlreadyGone(error)) return refreshDevices();
+      if (isAlreadyGone(error)) return forget();
     },
   });
 
