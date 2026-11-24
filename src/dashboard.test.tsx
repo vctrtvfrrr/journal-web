@@ -3,18 +3,9 @@ import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { Notebook, Task } from "./api/generated";
-import { api, device, problem } from "../test/api";
+import { aNotebook, api, device, problem } from "../test/api";
 import { renderAppAt } from "../test/render";
 import { setViewportWidth } from "../test/viewport";
-
-function aNotebook(id: string, name: string): Notebook {
-  return {
-    id: `0193b3a0-0000-7000-8000-${id.padStart(12, "0")}`,
-    name,
-    created_at: "2026-11-23T10:00:00Z",
-    updated_at: "2026-11-23T10:00:00Z",
-  };
-}
 
 const diary = aNotebook("201", "Diary");
 const plants = aNotebook("202", "Plants");

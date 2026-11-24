@@ -5,7 +5,9 @@ import { useStoredState } from "../lib/stored-state";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import { NotebookTab } from "./notebook-tab";
+import { QuickNoteForm } from "./quick-note-form";
+import { Tabs, TabsList } from "./ui/tabs";
 
 export function useNotebooks() {
   return useQuery({ ...listNotebooksOptions(), meta: { handledByRoute: true } });
@@ -13,7 +15,7 @@ export function useNotebooks() {
 
 export function NotesPanel() {
   const notebooks = useNotebooks();
-  const [storedId, setStoredId] = useStoredState("journal-notebook", "");
+  const [storedId, setStoredId] = useStoredState<string>("journal-notebook", "");
   const selected = notebooks.data?.find(({ id }) => id === storedId) ?? notebooks.data?.[0];
 
   return (
@@ -40,6 +42,7 @@ export function NotesPanel() {
       {notebooks.data?.length === 0 && (
         <p className="text-muted-foreground">No notebooks yet. Use + to add a note.</p>
       )}
+      {selected && <QuickNoteForm notebookId={selected.id} />}
       {selected && (
         <Tabs
           value={selected.id}
@@ -47,10 +50,15 @@ export function NotesPanel() {
           className="gap-0 border border-border-strong bg-surface"
         >
           <TabsList aria-label="Notebooks" className="bg-surface-2">
-            {notebooks.data?.map((notebook) => (
-              <TabsTrigger key={notebook.id} value={notebook.id}>
-                {notebook.name}
-              </TabsTrigger>
+            {notebooks.data?.map((notebook, index, all) => (
+              <NotebookTab
+                key={notebook.id}
+                notebook={notebook}
+                onDeleted={() => {
+                  if (notebook.id !== selected.id) return;
+                  setStoredId((all[index - 1] ?? all[index + 1])?.id ?? "");
+                }}
+              />
             ))}
           </TabsList>
         </Tabs>
