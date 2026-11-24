@@ -7,13 +7,12 @@ import { createNoteMutation } from "../api/generated/@tanstack/react-query.gen";
 import { zCreateNoteBody } from "../api/generated/zod.gen";
 import { apiTrim } from "../lib/api-trim";
 import { currentMinute } from "../lib/partial-date";
+import { notesQueryKey } from "../lib/query-keys";
 import { describeError, fieldErrors, isProblem } from "../lib/problem";
 import { Field } from "./field";
 import { Textarea } from "./ui/input";
 
 const quickNote = zCreateNoteBody.pick({ content: true });
-
-export const notesQueryKey = [{ _id: "listNotes" }];
 
 export function QuickNoteForm({ notebookId }: { notebookId: string }) {
   const id = useId();

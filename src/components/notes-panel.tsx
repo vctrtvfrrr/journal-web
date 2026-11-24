@@ -1,17 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import { listNotebooksOptions } from "../api/generated/@tanstack/react-query.gen";
+import { useNotebooks } from "../lib/notebooks";
 import { describeError } from "../lib/problem";
 import { useStoredState } from "../lib/stored-state";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
+import { NewNoteDialog } from "./new-note-dialog";
 import { NotebookTab } from "./notebook-tab";
 import { QuickNoteForm } from "./quick-note-form";
 import { Tabs, TabsList } from "./ui/tabs";
-
-export function useNotebooks() {
-  return useQuery({ ...listNotebooksOptions(), meta: { handledByRoute: true } });
-}
 
 export function NotesPanel() {
   const notebooks = useNotebooks();
@@ -39,28 +35,36 @@ export function NotesPanel() {
           </AlertDescription>
         </Alert>
       )}
-      {notebooks.data?.length === 0 && (
-        <p className="text-muted-foreground">No notebooks yet. Use + to add a note.</p>
-      )}
       {selected && <QuickNoteForm notebookId={selected.id} />}
-      {selected && (
+      {notebooks.data && (
         <Tabs
-          value={selected.id}
+          value={selected?.id ?? ""}
           onValueChange={setStoredId}
           className="gap-0 border border-border-strong bg-surface"
         >
-          <TabsList aria-label="Notebooks" className="bg-surface-2">
-            {notebooks.data?.map((notebook, index, all) => (
-              <NotebookTab
-                key={notebook.id}
-                notebook={notebook}
-                onDeleted={() => {
-                  if (notebook.id !== selected.id) return;
-                  setStoredId((all[index - 1] ?? all[index + 1])?.id ?? "");
-                }}
-              />
-            ))}
-          </TabsList>
+          <div className="flex min-w-0 items-end bg-surface-2 shadow-[inset_0_-1px_0_0_var(--border-strong)]">
+            {selected ? (
+              <TabsList aria-label="Notebooks" className="min-w-0 flex-1 shadow-none">
+                {notebooks.data.map((notebook, index, all) => (
+                  <NotebookTab
+                    key={notebook.id}
+                    notebook={notebook}
+                    onDeleted={() => {
+                      if (notebook.id !== selected.id) return;
+                      setStoredId((all[index - 1] ?? all[index + 1])?.id ?? "");
+                    }}
+                  />
+                ))}
+              </TabsList>
+            ) : (
+              <p className="flex-1 self-center px-[1ch] text-muted-foreground">
+                No notebooks yet. Use + to add a note.
+              </p>
+            )}
+            <div className="shrink-0 border-l border-border px-[0.5ch]">
+              <NewNoteDialog notebookId={selected?.id} onCreated={setStoredId} />
+            </div>
+          </div>
         </Tabs>
       )}
     </section>
