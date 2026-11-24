@@ -27,12 +27,14 @@ export function NoteForm({
   notebookId,
   defaultValues,
   onSave,
+  onNotebookCreated,
   onCancel,
   extraAction,
 }: {
   notebookId: string | undefined;
   defaultValues: NoteForm;
   onSave: (note: NoteInput) => Promise<unknown>;
+  onNotebookCreated?: (notebookId: string) => void;
   onCancel: () => void;
   extraAction?: ReactNode;
 }) {
@@ -74,6 +76,7 @@ export function NoteForm({
         const created = await createNotebook.mutateAsync({ body: { name: choice.name } });
         notebook_id = created.id;
         setChoice(created);
+        onNotebookCreated?.(created.id);
       }
       await onSave({ notebook_id, content, date });
     } catch (failure) {

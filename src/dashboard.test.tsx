@@ -117,3 +117,11 @@ test("shows a failed notebook load with a retry inside the notes column", async 
   await userEvent.click(notes.getByRole("button", { name: "Retry" }));
   expect(await notes.findByRole("tab", { name: "Diary" })).toBeDefined();
 });
+
+test("falls back to tasks on mobile when the stored view is unknown", async () => {
+  useMobileViewport();
+  localStorage.setItem("journal-home-view", "calendar");
+  renderAppAt("/");
+
+  expect(await screen.findByText("Water the ferns")).toBeDefined();
+});

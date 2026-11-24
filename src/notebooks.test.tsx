@@ -102,7 +102,9 @@ test("deletes a notebook from its tab menu and selects the one to its left", asy
   fireEvent.contextMenu(tab);
   await userEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
   const confirm = within(await screen.findByRole("dialog", { name: "Delete notebook?" }));
-  expect(confirm.getByText("Its notes will disappear from the timeline.")).toBeDefined();
+  expect(
+    confirm.getByText("Delete notebook Plants? Its notes will disappear from the timeline."),
+  ).toBeDefined();
   await userEvent.click(confirm.getByRole("button", { name: "Delete notebook" }));
 
   await waitFor(() => expect(notebookTabs().queryByRole("tab", { name: "Plants" })).toBeNull());

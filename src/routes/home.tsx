@@ -15,8 +15,12 @@ import { describeError } from "../lib/problem";
 import { useStoredState } from "../lib/stored-state";
 import { useMediaQuery } from "../lib/use-media-query";
 
+function useTasks() {
+  return useQuery({ ...listTasksOptions(), meta: { handledByRoute: true } });
+}
+
 function TasksPanel() {
-  const tasks = useQuery({ ...listTasksOptions(), meta: { handledByRoute: true } });
+  const tasks = useTasks();
 
   return (
     <section aria-labelledby="tasks-heading" className="grid min-w-0 content-start gap-3">
@@ -46,7 +50,7 @@ function TasksPanel() {
 }
 
 function SyncStatus() {
-  const tasks = useQuery({ ...listTasksOptions(), meta: { handledByRoute: true } });
+  const tasks = useTasks();
   const notebooks = useNotebooks();
   const saving = useIsMutating() > 0;
   const failed = tasks.isError || notebooks.isError;
@@ -61,13 +65,12 @@ function SyncStatus() {
   return <span className={failed ? "text-red-ink" : "text-green-ink"}>{status}</span>;
 }
 
-type View = "tasks" | "notes";
-
 function MobileHome() {
-  const [view, setView] = useStoredState<View>("journal-home-view", "tasks");
+  const [storedView, setView] = useStoredState<string>("journal-home-view", "tasks");
+  const view = storedView === "notes" ? "notes" : "tasks";
 
   return (
-    <Tabs value={view} onValueChange={(next) => setView(next as View)} className="contents">
+    <Tabs value={view} onValueChange={setView} className="contents">
       <JournalShell
         status={<SyncStatus />}
         footerAction={<ConnectedDevices />}

@@ -210,3 +210,32 @@ test("goes back to the dashboard when the note in the address does not exist", a
   await waitFor(() => expect(history.location.pathname).toBe("/"));
   expect(await screen.findByText("Note not found.")).toBeDefined();
 });
+
+test("selects a notebook created from the picker even when the note is rejected", async () => {
+  const requests = serveNotes([diary]);
+  api.use(
+    http.post("/api/notes", () =>
+      validationProblem([{ pointer: "#/content", detail: "Must be at most 10000 characters." }]),
+    ),
+  );
+  renderAppAt("/");
+
+  const dialog = await openNewNote();
+  await userEvent.click(dialog.getByRole("combobox", { name: "Notebook" }));
+  await userEvent.type(
+    await screen.findByPlaceholderText("Find or create a notebook..."),
+    "Recipes",
+  );
+  await userEvent.click(await screen.findByRole("option", { name: 'Create "Recipes"' }));
+  await userEvent.type(dialog.getByLabelText("Content"), "Too long.");
+  await userEvent.click(dialog.getByRole("button", { name: "save" }));
+
+  expect(
+    await dialog.findByText("Must be at most 10000 characters.", { exact: false }),
+  ).toBeDefined();
+  const behindTheDialog = { hidden: true };
+  expect(
+    await screen.findByRole("tab", { name: "Recipes", selected: true, ...behindTheDialog }),
+  ).toBeDefined();
+  expect(requests).toEqual([{ method: "POST", path: "/notebooks", body: { name: "Recipes" } }]);
+});

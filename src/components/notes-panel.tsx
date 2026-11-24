@@ -49,6 +49,7 @@ export function NotesPanel() {
                   <NotebookTab
                     key={notebook.id}
                     notebook={notebook}
+                    selected={notebook.id === selected.id}
                     onDeleted={() => {
                       if (notebook.id !== selected.id) return;
                       setStoredId((all[index - 1] ?? all[index + 1])?.id ?? "");

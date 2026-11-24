@@ -42,6 +42,7 @@ export function NewNoteDialog({
             onCreated(note.notebook_id);
             setOpen(false);
           }}
+          onNotebookCreated={onCreated}
           onCancel={() => setOpen(false)}
         />
       </DialogContent>

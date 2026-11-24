@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Notebook } from "../api/generated";
 import {
   archiveNotebookMutation,
@@ -119,8 +119,9 @@ function NotebookDelete({
     >
       <DialogContent label="Delete notebook?" showCloseButton={false}>
         <DialogTitle className="sr-only">Delete notebook?</DialogTitle>
-        <DialogDescription>Its notes will disappear from the timeline.</DialogDescription>
-        <p className="wrap-anywhere">{notebook.name}</p>
+        <DialogDescription className="wrap-anywhere">
+          Delete notebook {notebook.name}? Its notes will disappear from the timeline.
+        </DialogDescription>
         {remove.isError && <ErrorText>{describeError(remove.error)}</ErrorText>}
         <DialogFooter>
           <Button
@@ -147,13 +148,20 @@ function NotebookDelete({
 
 export function NotebookTab({
   notebook,
+  selected,
   onDeleted,
 }: {
   notebook: Notebook;
+  selected: boolean;
   onDeleted: () => void;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const tab = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (selected) tab.current?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [selected]);
 
   if (renaming) return <NotebookRename notebook={notebook} onDone={() => setRenaming(false)} />;
 
@@ -162,6 +170,7 @@ export function NotebookTab({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <TabsTrigger
+            ref={tab}
             value={notebook.id}
             onDoubleClick={() => setRenaming(true)}
             onKeyDown={(event) => {
