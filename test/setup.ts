@@ -17,6 +17,7 @@ const { cleanup } = await import("@testing-library/react");
 const { api } = await import("./api");
 const { client } = await import("../src/api/generated/client.gen");
 const { toast } = await import("sonner");
+const { setViewportWidth } = await import("./viewport");
 
 // Bun's Request needs an absolute URL, unlike the browser's.
 client.setConfig({ baseUrl: `${location.origin}/api` });
@@ -27,6 +28,8 @@ api.listen({
   },
 });
 afterEach(() => {
+  localStorage.clear();
+  setViewportWidth(1024);
   toast.dismiss();
   cleanup();
   api.resetHandlers();
