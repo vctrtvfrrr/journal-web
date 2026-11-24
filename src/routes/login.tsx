@@ -7,6 +7,7 @@ import type { z } from "zod";
 import { login } from "../api/generated";
 import { zLoginInput } from "../api/generated/zod.gen";
 import { ErrorText, Field } from "../components/field";
+import { JournalShell } from "../components/journal-shell";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -65,9 +66,15 @@ export function LoginPage() {
   });
 
   return (
-    <main className="grid min-h-dvh place-items-center p-4">
-      <form onSubmit={onSubmit} noValidate className="w-full max-w-sm">
-        <Card label="journal">
+    <JournalShell status={<span className="text-muted-foreground">Locked</span>}>
+      <form onSubmit={onSubmit} noValidate className="mx-auto mt-2 w-full max-w-sm">
+        <Card
+          label={
+            <span role="heading" aria-level={1}>
+              Unlock Journal
+            </span>
+          }
+        >
           <CardContent className="grid gap-4">
             <Field
               label="master password"
@@ -94,6 +101,6 @@ export function LoginPage() {
           </CardFooter>
         </Card>
       </form>
-    </main>
+    </JournalShell>
   );
 }
