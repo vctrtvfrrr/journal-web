@@ -64,3 +64,13 @@ export function aNote(id: string, date: string, content = `Note ${id}`, notebook
     updated_at: "2026-11-23T10:00:00Z",
   };
 }
+
+export function notesPage(request: Request, notes: Note[], pageSize = 50) {
+  const url = new URL(request.url);
+  const inNotebook = notes.filter((note) => note.notebook_id === url.searchParams.get("notebook"));
+  const start = Number(url.searchParams.get("cursor") ?? 0);
+  const end = start + pageSize;
+  const headers: HeadersInit =
+    end < inNotebook.length ? { Link: `</api/notes?cursor=${end}>; rel="next"` } : {};
+  return HttpResponse.json(inNotebook.slice(start, end), { headers });
+}

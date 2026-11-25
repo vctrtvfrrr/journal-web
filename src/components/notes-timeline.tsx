@@ -9,6 +9,7 @@ import {
   countNotes,
   flattenTimeline,
   formatTime,
+  groupKeys,
   groupNotes,
   parsePartialDate,
   type TimelineRow,
@@ -20,15 +21,15 @@ import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import { Spinner } from "./ui/spinner";
 
-const line = "absolute left-[calc(1ch-0.5px)] w-px bg-border-strong";
+const laneLine = "absolute left-[calc(1ch-0.5px)] w-px bg-border-strong";
 const groupColor = { year: "text-yellow-ink", month: "text-cyan-ink", day: "text-blue-ink" };
 
 function Lane({ connector }: { connector: Connector }) {
   return (
     <span aria-hidden className="relative w-[2ch] shrink-0 self-stretch">
-      {connector !== "blank" && <span className={cn(line, "top-0 h-3")} />}
+      {connector !== "blank" && <span className={cn(laneLine, "top-0 h-3")} />}
       {(connector === "pipe" || connector === "tee") && (
-        <span className={cn(line, "top-3 bottom-0")} />
+        <span className={cn(laneLine, "top-3 bottom-0")} />
       )}
       {(connector === "tee" || connector === "elbow") && (
         <span className="absolute top-[calc(0.75rem-0.5px)] left-[1ch] h-px w-[1ch] bg-border-strong" />
@@ -49,7 +50,7 @@ function NodeMark({ row, collapsed }: { row: TimelineRow; collapsed: boolean }) 
       >
         {glyph}
       </span>
-      {row.childLine && <span className={cn(line, "top-[1.1rem] bottom-0")} />}
+      {row.childLine && <span className={cn(laneLine, "top-[1.1rem] bottom-0")} />}
     </span>
   );
 }
@@ -200,13 +201,6 @@ function OlderNotesSentinel({ onVisible }: { onVisible: () => void }) {
   return <div ref={sentinel} aria-hidden />;
 }
 
-function groupKeysAbove(note: Note) {
-  const { year, month, day } = parsePartialDate(note.date);
-  return [year, month && `${year}-${month}`, day && `${year}-${month}-${day}`].filter(
-    (key) => key !== undefined,
-  );
-}
-
 function prefersReducedMotion() {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
@@ -217,8 +211,8 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
   const timeline = useTimeline(notebook);
   const container = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const [highlighted, setHighlighted] = useState<string>();
-  const { target, done } = useRevealNote();
+  const [highlighted, setHighlighted] = useState<{ id: string }>();
+  const { target, finishReveal } = useRevealNote();
   const revealing = target?.notebook_id === notebook ? target.id : undefined;
   const notes = useMemo(
     () => timeline.data?.pages.flatMap((page) => page.notes) ?? [],
@@ -235,20 +229,22 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
     if (note) {
       setCollapsed((previous) => {
         const next = new Set(previous);
-        for (const key of [...groupKeysAbove(note), note.id]) next.delete(key);
+        for (const key of [...groupKeys(parsePartialDate(note.date)), note.id]) next.delete(key);
         return next;
       });
-      setHighlighted(note.id);
-      done();
+      setHighlighted({ id: note.id });
+      finishReveal();
+    } else if (timeline.isFetchNextPageError) {
+      finishReveal();
     } else if (!timeline.isFetching) {
       if (timeline.hasNextPage) void timeline.fetchNextPage();
-      else done();
+      else finishReveal();
     }
-  }, [revealing, notes, timeline.isFetching, timeline.hasNextPage]);
+  }, [revealing, notes, timeline.isFetching, timeline.isFetchNextPageError, timeline.hasNextPage]);
 
   useEffect(() => {
     if (!highlighted) return;
-    const row = container.current?.querySelector(`[data-note="${highlighted}"]`);
+    const row = container.current?.querySelector(`[data-note="${highlighted.id}"]`);
     row?.scrollIntoView?.({
       block: "center",
       behavior: prefersReducedMotion() ? "auto" : "smooth",
@@ -298,7 +294,7 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
           key={row.key}
           row={row}
           collapsed={collapsed.has(row.key)}
-          highlighted={row.key === highlighted}
+          highlighted={row.key === highlighted?.id}
           onToggle={() => toggle(row.key)}
         />
       ))}

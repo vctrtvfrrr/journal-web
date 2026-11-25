@@ -1,4 +1,5 @@
 import type { Note } from "../api/generated";
+import { zPartialDate } from "../api/generated/zod.gen";
 
 export type Precision = "year" | "month" | "day" | "hour" | "minute";
 
@@ -11,14 +12,12 @@ export type PartialDateParts = {
   minute?: string;
 };
 
-const PARTIAL_DATE = /^(\d{4})(?:-(\d{2})(?:-(\d{2})(?:T(\d{2})(?::(\d{2}))?)?)?)?$/;
 const PRECISIONS: Precision[] = ["year", "month", "day", "hour", "minute"];
 
 export function parsePartialDate(date: string): PartialDateParts {
-  const match = PARTIAL_DATE.exec(date);
-  if (!match) throw new Error(`Invalid partial date: ${date}`);
-  const [year, month, day, hour, minute] = match.slice(1);
-  const known = match.slice(1).filter((part) => part !== undefined).length;
+  const parts = zPartialDate.parse(date).split(/[-T:]/);
+  const [year, month, day, hour, minute] = parts;
+  const known = parts.length;
   return {
     precision: PRECISIONS[known - 1]!,
     year: year!,
@@ -47,14 +46,17 @@ export type TimelineNode = TimelineNote | TimelineGroup;
 
 const LEVELS: GroupLevel[] = ["year", "month", "day"];
 
+export function groupKeys({ year, month, day }: PartialDateParts): string[] {
+  const path = [year, month, day].filter((part) => part !== undefined);
+  return path.map((_, depth) => path.slice(0, depth + 1).join("-"));
+}
+
 export function groupNotes(notes: Note[]): TimelineGroup[] {
   const root: TimelineGroup[] = [];
   for (const note of notes) {
     const date = parsePartialDate(note.date);
-    const path = [date.year, date.month, date.day].filter((part) => part !== undefined);
     let siblings: TimelineNode[] = root;
-    path.forEach((_, depth) => {
-      const key = path.slice(0, depth + 1).join("-");
+    groupKeys(date).forEach((key, depth) => {
       const last = siblings.at(-1);
       let group = last?.kind === "group" && last.key === key ? last : undefined;
       if (!group) {
@@ -98,19 +100,18 @@ export function flattenTimeline(
   walk(groups, 0);
 
   const deepest = Math.max(0, ...visible.map(({ depth }) => depth));
-  // Scanning backwards, laneContinues[lane] tells whether a later row still hangs from that lane.
-  const laneContinues = Array.from({ length: deepest + 1 }, () => hasMore);
+  const laneHasLaterRow = Array.from({ length: deepest + 1 }, () => hasMore);
   const rows: TimelineRow[] = [];
   for (let index = visible.length - 1; index >= 0; index--) {
     const { node, depth } = visible[index]!;
     const lanes = Array.from({ length: depth }, (_, lane): Connector => {
-      if (lane === depth - 1) return laneContinues[lane] ? "tee" : "elbow";
-      return laneContinues[lane] ? "pipe" : "blank";
+      if (lane === depth - 1) return laneHasLaterRow[lane] ? "tee" : "elbow";
+      return laneHasLaterRow[lane] ? "pipe" : "blank";
     });
     const childLine = visible[index + 1]?.depth === depth + 1;
     rows.push({ ...node, depth, lanes, childLine });
-    if (depth > 0) laneContinues[depth - 1] = true;
-    laneContinues.fill(false, depth);
+    if (depth > 0) laneHasLaterRow[depth - 1] = true;
+    laneHasLaterRow.fill(false, depth);
   }
   return rows.reverse();
 }

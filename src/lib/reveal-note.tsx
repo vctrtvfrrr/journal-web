@@ -6,7 +6,7 @@ type NoteToReveal = Pick<Note, "id" | "notebook_id">;
 const RevealNoteContext = createContext<{
   target: NoteToReveal | undefined;
   reveal: (note: NoteToReveal) => void;
-  done: () => void;
+  finishReveal: () => void;
 } | null>(null);
 
 export function RevealNoteProvider({ children }: { children: ReactNode }) {
@@ -14,7 +14,7 @@ export function RevealNoteProvider({ children }: { children: ReactNode }) {
   const value = {
     target,
     reveal: (note: NoteToReveal) => setTarget({ id: note.id, notebook_id: note.notebook_id }),
-    done: () => setTarget(undefined),
+    finishReveal: () => setTarget(undefined),
   };
   return <RevealNoteContext.Provider value={value}>{children}</RevealNoteContext.Provider>;
 }

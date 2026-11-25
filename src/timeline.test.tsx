@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { Note } from "./api/generated";
-import { aNote, aNotebook, api, device, problem } from "../test/api";
+import { aNote, aNotebook, api, device, notesPage, problem } from "../test/api";
 import { renderAppAt } from "../test/render";
 
 const diary = aNotebook("1", "Diary");
@@ -15,18 +15,12 @@ beforeEach(() => {
   );
 });
 
-function serveTimeline(pages: Note[][]) {
+function serveTimeline(notes: Note[], pageSize?: number) {
   const requested: (string | null)[] = [];
   api.use(
     http.get("/api/notes", ({ request }) => {
-      const url = new URL(request.url);
-      requested.push(url.searchParams.get("cursor"));
-      const index = Number(url.searchParams.get("cursor") ?? 0);
-      const headers: HeadersInit =
-        index + 1 < pages.length
-          ? { Link: `</api/notes?notebook=${diary.id}&cursor=${index + 1}>; rel="next"` }
-          : {};
-      return HttpResponse.json(pages[index] ?? [], { headers });
+      requested.push(new URL(request.url).searchParams.get("cursor"));
+      return notesPage(request, notes, pageSize);
     }),
   );
   return requested;
@@ -38,11 +32,9 @@ async function timeline() {
 
 test("shows the notebook notes grouped by year, month and day with their times", async () => {
   serveTimeline([
-    [
-      aNote("1", "2026-11-24T15:35", "Coffee with **Ana**"),
-      aNote("2", "2026-11-24T09", "Run"),
-      aNote("3", "2026-11", "Month note"),
-    ],
+    aNote("1", "2026-11-24T15:35", "Coffee with **Ana**"),
+    aNote("2", "2026-11-24T09", "Run"),
+    aNote("3", "2026-11", "Month note"),
   ]);
   renderAppAt("/");
 
@@ -59,7 +51,7 @@ test("shows the notebook notes grouped by year, month and day with their times",
 
 test("opens a note from its body", async () => {
   const note = aNote("1", "2026-11-24T15:35", "Coffee with Ana");
-  serveTimeline([[note]]);
+  serveTimeline([note]);
   api.use(http.get("/api/notes/:id", () => HttpResponse.json(note)));
   const history = renderAppAt("/");
 
@@ -70,10 +62,10 @@ test("opens a note from its body", async () => {
 });
 
 test("loads older pages from the Link header until the beginning of the notebook", async () => {
-  const requested = serveTimeline([
-    [aNote("1", "2026-11-24T15:35", "Newest")],
-    [aNote("2", "2025-01-02T08:00", "Oldest")],
-  ]);
+  const requested = serveTimeline(
+    [aNote("1", "2026-11-24T15:35", "Newest"), aNote("2", "2025-01-02T08:00", "Oldest")],
+    1,
+  );
   renderAppAt("/");
 
   const panel = await timeline();
@@ -86,7 +78,7 @@ test("loads older pages from the Link header until the beginning of the notebook
 });
 
 test("says when the notebook has no notes yet", async () => {
-  serveTimeline([[]]);
+  serveTimeline([]);
   renderAppAt("/");
 
   expect(
@@ -96,10 +88,8 @@ test("says when the notebook has no notes yet", async () => {
 
 test("collapses a group into its note count and a time into its first line", async () => {
   serveTimeline([
-    [
-      aNote("1", "2026-11-24T15:35", "First line\n\nSecond paragraph"),
-      aNote("2", "2026-11-23", "Yesterday"),
-    ],
+    aNote("1", "2026-11-24T15:35", "First line\n\nSecond paragraph"),
+    aNote("2", "2026-11-23", "Yesterday"),
   ]);
   renderAppAt("/");
 

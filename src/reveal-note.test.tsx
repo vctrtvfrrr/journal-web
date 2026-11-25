@@ -3,7 +3,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { Note, NoteChanges, NoteInput } from "./api/generated";
-import { aNote, aNotebook, api, device } from "../test/api";
+import { aNote, aNotebook, api, device, notesPage, problem } from "../test/api";
+import { setViewportWidth } from "../test/viewport";
 import { renderAppAt } from "../test/render";
 
 const diary = aNotebook("1", "Diary");
@@ -16,17 +17,8 @@ function serveNotes(initial: Note[], pageSize = 50) {
   const cursors: (string | null)[] = [];
   api.use(
     http.get("/api/notes", ({ request }) => {
-      const url = new URL(request.url);
-      const cursor = url.searchParams.get("cursor");
-      cursors.push(cursor);
-      const inNotebook = notes.filter(
-        (note) => note.notebook_id === url.searchParams.get("notebook"),
-      );
-      const start = Number(cursor ?? 0);
-      const end = start + pageSize;
-      const headers: HeadersInit =
-        end < inNotebook.length ? { Link: `</api/notes?cursor=${end}>; rel="next"` } : {};
-      return HttpResponse.json(inNotebook.slice(start, end), { headers });
+      cursors.push(new URL(request.url).searchParams.get("cursor"));
+      return notesPage(request, notes, pageSize);
     }),
     http.get("/api/notes/:id", ({ params }) =>
       HttpResponse.json(notes.find((note) => note.id === params.id)),
@@ -149,4 +141,52 @@ test("does not scroll when the edit is cancelled", async () => {
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(await screen.findByText("Untouched")).toBeDefined();
   expect(scrolledTo.filter((element) => element.hasAttribute("data-highlighted"))).toEqual([]);
+});
+
+test("scrolls to a note added from the new note dialog", async () => {
+  serveNotes([aNote("1", "2026-11-20", "Older")]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("button", { name: "New note" }));
+  const dialog = within(await screen.findByRole("dialog", { name: "New note" }));
+  await userEvent.type(dialog.getByLabelText("Content"), "From the dialog");
+  await userEvent.click(dialog.getByRole("button", { name: "save" }));
+
+  await revealedNote("From the dialog");
+});
+
+test("stops looking for the note when an older page fails", async () => {
+  const old = aNote("2", "2024-01-01", "Old note");
+  serveNotes([aNote("1", "2026-11-20", "Newest"), old], 1);
+  let olderPageRequests = 0;
+  renderAppAt(`/notes/${old.id}`);
+
+  const dialog = within(await screen.findByRole("dialog", { name: "Edit note" }));
+  await screen.findByText("Newest");
+  api.use(
+    http.get("/api/notes", ({ request }) => {
+      if (!new URL(request.url).searchParams.get("cursor")) return;
+      olderPageRequests++;
+      return problem(503, "Try later.");
+    }),
+  );
+  await userEvent.type(dialog.getByLabelText("Content"), " edited");
+  await userEvent.click(dialog.getByRole("button", { name: "save" }));
+
+  expect(await screen.findByText("Try later.")).toBeDefined();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(olderPageRequests).toBe(1);
+});
+
+test("switches the mobile view to the notes to show the saved note", async () => {
+  setViewportWidth(375);
+  const note = aNote("1", "2026-11-20T08:00", "Opened from a link");
+  serveNotes([note]);
+  renderAppAt(`/notes/${note.id}`);
+
+  const dialog = within(await screen.findByRole("dialog", { name: "Edit note" }));
+  await userEvent.click(dialog.getByRole("button", { name: "save" }));
+
+  await revealedNote("Opened from a link");
+  expect(screen.getByRole("tab", { name: "Notes" }).getAttribute("aria-selected")).toBe("true");
 });

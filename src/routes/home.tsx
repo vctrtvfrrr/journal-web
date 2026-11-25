@@ -1,5 +1,6 @@
 import { useIsMutating, useQuery } from "@tanstack/react-query";
 import { Outlet } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { listTasksOptions } from "../api/generated/@tanstack/react-query.gen";
 import { ConnectedDevices } from "../components/connected-devices";
 import { JournalShell } from "../components/journal-shell";
@@ -10,7 +11,7 @@ import { TaskList } from "../components/task-list";
 import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useNotebooks } from "../lib/notebooks";
-import { RevealNoteProvider } from "../lib/reveal-note";
+import { RevealNoteProvider, useRevealNote } from "../lib/reveal-note";
 import { useStoredState } from "../lib/stored-state";
 import { useMediaQuery } from "../lib/use-media-query";
 
@@ -58,6 +59,10 @@ function SyncStatus() {
 function MobileHome() {
   const [storedView, setView] = useStoredState<string>("journal-home-view", "tasks");
   const view = storedView === "notes" ? "notes" : "tasks";
+  const revealPending = useRevealNote().target !== undefined;
+  useEffect(() => {
+    if (revealPending) setView("notes");
+  }, [revealPending]);
 
   return (
     <Tabs value={view} onValueChange={setView} className="contents">

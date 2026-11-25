@@ -13,10 +13,10 @@ import { Tabs, TabsContent, TabsList } from "./ui/tabs";
 export function NotesPanel() {
   const notebooks = useNotebooks();
   const [storedId, setStoredId] = useStoredState<string>("journal-notebook", "");
-  const revealing = useRevealNote().target?.notebook_id;
+  const revealedNotebook = useRevealNote().target?.notebook_id;
   useEffect(() => {
-    if (revealing) setStoredId(revealing);
-  }, [revealing]);
+    if (revealedNotebook) setStoredId(revealedNotebook);
+  }, [revealedNotebook]);
   const selected = notebooks.data?.find(({ id }) => id === storedId) ?? notebooks.data?.[0];
 
   return (
