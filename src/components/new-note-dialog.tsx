@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { currentMinute } from "../lib/partial-date";
 import { useCreateNote } from "../lib/notes";
-import { useRevealNote } from "../lib/reveal-note";
+import { useRevealOnClose } from "../lib/reveal-note";
 import { NoteForm } from "./note-form";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "./ui/dialog";
@@ -15,7 +15,7 @@ export function NewNoteDialog({
 }) {
   const [open, setOpen] = useState(false);
   const create = useCreateNote();
-  const { reveal } = useRevealNote();
+  const { revealOnClose, onCloseAutoFocus } = useRevealOnClose();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -24,7 +24,7 @@ export function NewNoteDialog({
           <span aria-hidden>+</span>
         </Button>
       </DialogTrigger>
-      <DialogContent label="New note">
+      <DialogContent label="New note" onCloseAutoFocus={onCloseAutoFocus}>
         <DialogTitle className="sr-only">New note</DialogTitle>
         <DialogDescription className="sr-only">
           Write a note and choose its notebook and date.
@@ -34,8 +34,8 @@ export function NewNoteDialog({
           defaultValues={{ content: "", date: currentMinute() }}
           onSave={async (note) => {
             const created = await create.mutateAsync({ body: note });
+            revealOnClose(created);
             setOpen(false);
-            reveal(created);
           }}
           onNotebookCreated={onCreated}
           onCancel={() => setOpen(false)}

@@ -17,7 +17,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { toast } from "../components/ui/sonner";
 import { describeError, isProblem } from "../lib/problem";
 import { timelineQueryKey } from "../lib/notes";
-import { useRevealNote } from "../lib/reveal-note";
+import { useRevealOnClose } from "../lib/reveal-note";
 
 function isMissingNote(error: unknown) {
   return isProblem(error) && (error.status === 404 || error.status === 400);
@@ -60,9 +60,16 @@ function NoteDelete({ note, onDeleted }: { note: Note; onDeleted: () => void }) 
   );
 }
 
-function NoteEditForm({ note, onDone }: { note: Note; onDone: () => void }) {
+function NoteEditForm({
+  note,
+  onSaved,
+  onDone,
+}: {
+  note: Note;
+  onSaved: (saved: Note) => void;
+  onDone: () => void;
+}) {
   const queryClient = useQueryClient();
-  const { reveal } = useRevealNote();
   const update = useMutation({
     ...updateNoteMutation(),
     meta: { showsOwnError: true },
@@ -82,8 +89,8 @@ function NoteEditForm({ note, onDone }: { note: Note; onDone: () => void }) {
       defaultValues={{ content: note.content, date: note.date }}
       onSave={async (changes) => {
         const saved = await update.mutateAsync({ path: { id: note.id }, body: changes });
+        onSaved(saved);
         onDone();
-        reveal(saved);
       }}
       onCancel={onDone}
       extraAction={<NoteDelete note={note} onDeleted={onDone} />}
@@ -99,6 +106,7 @@ export function NotePage() {
     meta: { handledByRoute: true },
   });
   const close = () => void navigate({ to: "/" });
+  const { revealOnClose, onCloseAutoFocus } = useRevealOnClose();
 
   useEffect(() => {
     if (!isMissingNote(note.error)) return;
@@ -108,7 +116,7 @@ export function NotePage() {
 
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
-      <DialogContent label="Edit note">
+      <DialogContent label="Edit note" onCloseAutoFocus={onCloseAutoFocus}>
         <DialogTitle className="sr-only">Edit note</DialogTitle>
         <DialogDescription className="sr-only">
           Change the note content, notebook, or date.
@@ -119,7 +127,7 @@ export function NotePage() {
             <AlertDescription>{describeError(note.error)}</AlertDescription>
           </Alert>
         )}
-        {note.data && <NoteEditForm note={note.data} onDone={close} />}
+        {note.data && <NoteEditForm note={note.data} onSaved={revealOnClose} onDone={close} />}
       </DialogContent>
     </Dialog>
   );

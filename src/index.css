@@ -236,9 +236,10 @@
   }
 }
 
+/* The tint lives in a custom property: Bun's CSS bundler drops a color-mix() keyframe. */
 @keyframes note-highlight {
   from {
-    background-color: color-mix(in oklab, var(--accent) 18%, transparent);
+    background-color: var(--note-highlight);
   }
   to {
     background-color: transparent;
@@ -247,12 +248,13 @@
 
 @layer components {
   .note-highlight {
+    --note-highlight: color-mix(in oklab, var(--accent) 18%, transparent);
     animation: note-highlight 2s ease-out forwards;
   }
   @media (prefers-reduced-motion: reduce) {
     .note-highlight {
       animation: none;
-      background-color: color-mix(in oklab, var(--accent) 18%, transparent);
+      background-color: var(--note-highlight);
     }
   }
 }
