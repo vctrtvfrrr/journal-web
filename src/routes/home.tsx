@@ -86,10 +86,10 @@ function DesktopHome() {
   return (
     <JournalShell status={<SyncStatus />} footerAction={<ConnectedDevices />} scroll="panes">
       <div className="grid h-full grid-cols-2 gap-[2ch]">
-        <div className="min-h-0 overflow-y-auto">
+        <div className="min-h-0 overflow-y-auto px-[1ch]">
           <TasksPanel />
         </div>
-        <div className="min-h-0 overflow-y-auto">
+        <div className="min-h-0 overflow-y-auto px-[1ch]">
           <NotesPanel />
         </div>
       </div>
