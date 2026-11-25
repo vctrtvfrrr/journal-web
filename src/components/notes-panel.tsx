@@ -5,7 +5,8 @@ import { Skeleton } from "./ui/skeleton";
 import { NewNoteDialog } from "./new-note-dialog";
 import { NotebookTab } from "./notebook-tab";
 import { QuickNoteForm } from "./quick-note-form";
-import { Tabs, TabsList } from "./ui/tabs";
+import { NotesTimeline } from "./notes-timeline";
+import { Tabs, TabsContent, TabsList } from "./ui/tabs";
 
 export function NotesPanel() {
   const notebooks = useNotebooks();
@@ -52,6 +53,11 @@ export function NotesPanel() {
               <NewNoteDialog notebookId={selected?.id} onCreated={setStoredId} />
             </div>
           </div>
+          {selected && (
+            <TabsContent value={selected.id} className="min-w-0">
+              <NotesTimeline key={selected.id} notebook={selected.id} />
+            </TabsContent>
+          )}
         </Tabs>
       )}
     </section>

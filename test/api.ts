@@ -11,6 +11,7 @@ import type {
 
 export const api = setupServer(
   http.get("/api/tasks", () => HttpResponse.json([] satisfies Task[])),
+  http.get("/api/notes", () => HttpResponse.json([] satisfies Note[])),
   http.get("/api/notebooks", () => HttpResponse.json([] satisfies Notebook[])),
 );
 
