@@ -1,6 +1,13 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import type { Device, Notebook, Problem, Task, ValidationProblem } from "../src/api/generated";
+import type {
+  Device,
+  Note,
+  Notebook,
+  Problem,
+  Task,
+  ValidationProblem,
+} from "../src/api/generated";
 
 export const api = setupServer(
   http.get("/api/tasks", () => HttpResponse.json([] satisfies Task[])),
@@ -41,6 +48,17 @@ export function aNotebook(id: string, name: string): Notebook {
   return {
     id: `0193b3a0-0000-7000-8000-${id.padStart(12, "0")}`,
     name,
+    created_at: "2026-11-23T10:00:00Z",
+    updated_at: "2026-11-23T10:00:00Z",
+  };
+}
+
+export function aNote(id: string, date: string, content = `Note ${id}`, notebookId = "1"): Note {
+  return {
+    id: `0193b3a0-0000-7000-8000-${id.padStart(12, "0")}`,
+    notebook_id: aNotebook(notebookId, "").id,
+    content,
+    date,
     created_at: "2026-11-23T10:00:00Z",
     updated_at: "2026-11-23T10:00:00Z",
   };
