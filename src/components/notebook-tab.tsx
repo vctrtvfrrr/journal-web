@@ -6,23 +6,19 @@ import {
   listNotebooksQueryKey,
   updateNotebookMutation,
 } from "../api/generated/@tanstack/react-query.gen";
-import { zCreateNotebookBody } from "../api/generated/zod.gen";
+import { zUpdateNotebookBody } from "../api/generated/zod.gen";
 import { apiTrim } from "../lib/api-trim";
-import { describeError, fieldErrors, isProblem } from "../lib/problem";
-import { ErrorText } from "./field";
-import { Button } from "./ui/button";
+import { describeError, fieldError } from "../lib/problem";
+import { ConfirmDialog } from "./confirm-dialog";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from "./ui/context-menu";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { TabsTrigger } from "./ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-
-const notebookName = zCreateNotebookBody.shape.name;
 
 function NotebookRename({ notebook, onDone }: { notebook: Notebook; onDone: () => void }) {
   const queryClient = useQueryClient();
@@ -43,16 +39,13 @@ function NotebookRename({ notebook, onDone }: { notebook: Notebook; onDone: () =
     if (finished.current || rename.isPending) return;
     const name = apiTrim(value);
     if (name === notebook.name) return finish();
-    const parsed = notebookName.safeParse(name);
+    const parsed = zUpdateNotebookBody.safeParse({ name });
     if (!parsed.success) return setError(parsed.error.issues[0]?.message);
     try {
       await rename.mutateAsync({ path: { id: notebook.id }, body: { name } });
       finish();
     } catch (failure) {
-      const nameError = isProblem(failure)
-        ? fieldErrors(failure).find(({ pointer }) => pointer === "#/name")?.detail
-        : undefined;
-      setError(nameError ?? describeError(failure));
+      setError(fieldError(failure, "name") ?? describeError(failure));
     }
   };
 
@@ -109,40 +102,15 @@ function NotebookDelete({
   });
 
   return (
-    <Dialog
+    <ConfirmDialog
       open={open}
-      onOpenChange={(next) => {
-        if (remove.isPending) return;
-        if (next) remove.reset();
-        onOpenChange(next);
-      }}
-    >
-      <DialogContent label="Delete notebook?" showCloseButton={false}>
-        <DialogTitle className="sr-only">Delete notebook?</DialogTitle>
-        <DialogDescription className="wrap-anywhere">
-          Delete notebook {notebook.name}? Its notes will disappear from the timeline.
-        </DialogDescription>
-        {remove.isError && <ErrorText>{describeError(remove.error)}</ErrorText>}
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={remove.isPending}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={remove.isPending}
-            onClick={() => remove.mutate({ path: { id: notebook.id } })}
-          >
-            Delete notebook
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      onOpenChange={onOpenChange}
+      title="Delete notebook?"
+      description={`Delete notebook ${notebook.name}? Its notes will disappear from the timeline.`}
+      confirmLabel="Delete notebook"
+      status={remove}
+      onConfirm={() => remove.mutate({ path: { id: notebook.id } })}
+    />
   );
 }
 

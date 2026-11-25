@@ -21,6 +21,11 @@ export function fieldErrors(problem: Problem | ValidationProblem): FieldError[] 
   return "errors" in problem ? problem.errors : [];
 }
 
+export function fieldError(error: unknown, field: string): string | undefined {
+  if (!isProblem(error)) return undefined;
+  return fieldErrors(error).find(({ pointer }) => pointerField(pointer) === field)?.detail;
+}
+
 export function pointerField(pointer: string): string {
   return pointer.replace(/^#\//, "");
 }

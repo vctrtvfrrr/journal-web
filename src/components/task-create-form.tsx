@@ -6,7 +6,7 @@ import type { z } from "zod";
 import { createTaskMutation, listTasksQueryKey } from "../api/generated/@tanstack/react-query.gen";
 import { zCreateTaskBody } from "../api/generated/zod.gen";
 import { apiTrim } from "../lib/api-trim";
-import { describeError, fieldErrors, isProblem } from "../lib/problem";
+import { describeError, fieldError } from "../lib/problem";
 import { Field } from "./field";
 import { Button } from "./ui/button";
 import { PromptInput } from "./ui/input";
@@ -33,10 +33,7 @@ export function TaskCreateForm() {
       await create.mutateAsync({ body: { title } });
       form.reset();
     } catch (failure) {
-      const titleError = isProblem(failure)
-        ? fieldErrors(failure).find(({ pointer }) => pointer === "#/title")
-        : undefined;
-      form.setError("title", { message: titleError?.detail ?? describeError(failure) });
+      form.setError("title", { message: fieldError(failure, "title") ?? describeError(failure) });
     }
   });
 

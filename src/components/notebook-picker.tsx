@@ -6,7 +6,9 @@ import { cn } from "../lib/utils";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
-export type NotebookChoice = { id: string; name: string } | { id?: undefined; name: string };
+export type NotebookChoice =
+  | Pick<Notebook, "id" | "name">
+  | { id?: undefined; name: Notebook["name"] };
 
 export function NotebookPicker({
   id,

@@ -1,8 +1,6 @@
 import { useNotebooks } from "../lib/notebooks";
-import { describeError } from "../lib/problem";
 import { useStoredState } from "../lib/stored-state";
-import { Alert, AlertDescription } from "./ui/alert";
-import { Button } from "./ui/button";
+import { LoadError } from "./load-error";
 import { Skeleton } from "./ui/skeleton";
 import { NewNoteDialog } from "./new-note-dialog";
 import { NotebookTab } from "./notebook-tab";
@@ -21,19 +19,7 @@ export function NotesPanel() {
       </h2>
       {notebooks.isPending && <Skeleton className="h-24" aria-hidden />}
       {notebooks.isError && (
-        <Alert variant="destructive">
-          <AlertDescription className="flex items-center gap-[1ch]">
-            {describeError(notebooks.error)}
-            <Button
-              type="button"
-              variant="bracket"
-              size="sm"
-              onClick={() => void notebooks.refetch()}
-            >
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <LoadError error={notebooks.error} onRetry={() => void notebooks.refetch()} />
       )}
       {selected && <QuickNoteForm notebookId={selected.id} />}
       {notebooks.data && (

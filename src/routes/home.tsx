@@ -3,15 +3,13 @@ import { Outlet } from "@tanstack/react-router";
 import { listTasksOptions } from "../api/generated/@tanstack/react-query.gen";
 import { ConnectedDevices } from "../components/connected-devices";
 import { JournalShell } from "../components/journal-shell";
+import { LoadError } from "../components/load-error";
 import { NotesPanel } from "../components/notes-panel";
 import { TaskCreateForm } from "../components/task-create-form";
 import { TaskList } from "../components/task-list";
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useNotebooks } from "../lib/notebooks";
-import { describeError } from "../lib/problem";
 import { useStoredState } from "../lib/stored-state";
 import { useMediaQuery } from "../lib/use-media-query";
 
@@ -33,16 +31,7 @@ function TasksPanel() {
           <Skeleton className="h-24" />
         </div>
       )}
-      {tasks.isError && (
-        <Alert variant="destructive">
-          <AlertDescription className="flex items-center gap-[1ch]">
-            {describeError(tasks.error)}
-            <Button type="button" variant="bracket" size="sm" onClick={() => void tasks.refetch()}>
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      {tasks.isError && <LoadError error={tasks.error} onRetry={() => void tasks.refetch()} />}
       {tasks.data && !tasks.isError && <TaskCreateForm />}
       {tasks.data && <TaskList tasks={tasks.data} />}
     </section>
@@ -95,11 +84,7 @@ function MobileHome() {
 
 function DesktopHome() {
   return (
-    <JournalShell
-      status={<SyncStatus />}
-      footerAction={<ConnectedDevices />}
-      className="[&>main]:overflow-hidden"
-    >
+    <JournalShell status={<SyncStatus />} footerAction={<ConnectedDevices />} scroll="panes">
       <div className="grid h-full grid-cols-2 gap-[2ch]">
         <div className="min-h-0 overflow-y-auto">
           <TasksPanel />

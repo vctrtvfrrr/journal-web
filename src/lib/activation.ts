@@ -1,10 +1,13 @@
 import type { KeyboardEvent, MouseEvent } from "react";
 
-// Lets a whole row act as a button while the links rendered inside it keep working.
+function clickedLink(event: MouseEvent<HTMLElement>) {
+  return (event.target as Element).closest("a") !== null;
+}
+
 export function activationHandlers(activate: () => void) {
   return {
     onClick(event: MouseEvent<HTMLElement>) {
-      if ((event.target as Element).closest("a")) return;
+      if (clickedLink(event)) return;
       activate();
     },
     onKeyDown(event: KeyboardEvent<HTMLElement>) {

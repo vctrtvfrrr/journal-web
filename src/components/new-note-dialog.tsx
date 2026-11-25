@@ -1,8 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { createNoteMutation } from "../api/generated/@tanstack/react-query.gen";
 import { currentMinute } from "../lib/partial-date";
-import { notesQueryKey } from "../lib/query-keys";
+import { useCreateNote } from "../lib/notes";
 import { NoteForm } from "./note-form";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "./ui/dialog";
@@ -15,12 +13,7 @@ export function NewNoteDialog({
   onCreated: (notebookId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const queryClient = useQueryClient();
-  const create = useMutation({
-    ...createNoteMutation(),
-    meta: { showsOwnError: true },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: notesQueryKey }),
-  });
+  const create = useCreateNote();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

@@ -1,27 +1,20 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
-import { createNoteMutation } from "../api/generated/@tanstack/react-query.gen";
-import { zCreateNoteBody } from "../api/generated/zod.gen";
+import { zNoteInput } from "../api/generated/zod.gen";
 import { apiTrim } from "../lib/api-trim";
 import { currentMinute } from "../lib/partial-date";
-import { notesQueryKey } from "../lib/query-keys";
-import { describeError, fieldErrors, isProblem } from "../lib/problem";
+import { useCreateNote } from "../lib/notes";
+import { describeError, fieldError } from "../lib/problem";
 import { Field } from "./field";
 import { Textarea } from "./ui/input";
 
-const quickNote = zCreateNoteBody.pick({ content: true });
+const quickNote = zNoteInput.pick({ content: true });
 
 export function QuickNoteForm({ notebookId }: { notebookId: string }) {
   const id = useId();
-  const queryClient = useQueryClient();
-  const create = useMutation({
-    ...createNoteMutation(),
-    meta: { showsOwnError: true },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: notesQueryKey }),
-  });
+  const create = useCreateNote();
   const form = useForm<z.infer<typeof quickNote>>({
     resolver: zodResolver(quickNote),
     defaultValues: { content: "" },
@@ -36,10 +29,9 @@ export function QuickNoteForm({ notebookId }: { notebookId: string }) {
       });
       form.reset();
     } catch (failure) {
-      const contentError = isProblem(failure)
-        ? fieldErrors(failure).find(({ pointer }) => pointer === "#/content")
-        : undefined;
-      form.setError("content", { message: contentError?.detail ?? describeError(failure) });
+      form.setError("content", {
+        message: fieldError(failure, "content") ?? describeError(failure),
+      });
     }
   });
 

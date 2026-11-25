@@ -8,21 +8,15 @@ import {
   getNoteQueryKey,
   updateNoteMutation,
 } from "../api/generated/@tanstack/react-query.gen";
-import { ErrorText } from "../components/field";
+import { ConfirmDialog } from "../components/confirm-dialog";
 import { NoteForm } from "../components/note-form";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-} from "../components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../components/ui/dialog";
 import { Skeleton } from "../components/ui/skeleton";
 import { toast } from "../components/ui/sonner";
 import { describeError, isProblem } from "../lib/problem";
-import { notesQueryKey } from "../lib/query-keys";
+import { timelineQueryKey } from "../lib/notes";
 
 function isMissingNote(error: unknown) {
   return isProblem(error) && (error.status === 404 || error.status === 400);
@@ -35,53 +29,33 @@ function NoteDelete({ note, onDeleted }: { note: Note; onDeleted: () => void }) 
     ...deleteNoteMutation(),
     meta: { showsOwnError: true },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: notesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: timelineQueryKey(note.notebook_id) });
       setOpen(false);
       onDeleted();
     },
   });
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="destructive"
-        size="sm"
-        className="ml-auto"
-        aria-label="Delete note"
-        onClick={() => {
-          remove.reset();
-          setOpen(true);
-        }}
-      >
-        <span aria-hidden>delete</span>
-      </Button>
-      <Dialog open={open} onOpenChange={(next) => !remove.isPending && setOpen(next)}>
-        <DialogContent label="Delete note?" showCloseButton={false}>
-          <DialogTitle className="sr-only">Delete note?</DialogTitle>
-          <DialogDescription>Remove this note from its timeline?</DialogDescription>
-          {remove.isError && <ErrorText>{describeError(remove.error)}</ErrorText>}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={remove.isPending}
-              onClick={() => setOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={remove.isPending}
-              onClick={() => remove.mutate({ path: { id: note.id } })}
-            >
-              Delete note
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={setOpen}
+      trigger={
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          className="ml-auto"
+          aria-label="Delete note"
+        >
+          <span aria-hidden>delete</span>
+        </Button>
+      }
+      title="Delete note?"
+      description="Remove this note from its timeline?"
+      confirmLabel="Delete note"
+      status={remove}
+      onConfirm={() => remove.mutate({ path: { id: note.id } })}
+    />
   );
 }
 
@@ -92,7 +66,11 @@ function NoteEditForm({ note, onDone }: { note: Note; onDone: () => void }) {
     meta: { showsOwnError: true },
     onSuccess: (saved) => {
       queryClient.setQueryData(getNoteQueryKey({ path: { id: note.id } }), saved);
-      return queryClient.invalidateQueries({ queryKey: notesQueryKey });
+      return Promise.all(
+        [note.notebook_id, saved.notebook_id].map((notebook) =>
+          queryClient.invalidateQueries({ queryKey: timelineQueryKey(notebook) }),
+        ),
+      );
     },
   });
 

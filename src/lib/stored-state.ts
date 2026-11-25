@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-function read(key: string) {
+function read(key: StoredKey) {
   try {
     return localStorage.getItem(key);
   } catch {
@@ -8,13 +8,15 @@ function read(key: string) {
   }
 }
 
-function write(key: string, value: string) {
+function write(key: StoredKey, value: string) {
   try {
     localStorage.setItem(key, value);
   } catch {}
 }
 
-export function useStoredState<T extends string>(key: string, fallback: T) {
+type StoredKey = "journal-notebook" | "journal-home-view";
+
+export function useStoredState<T extends string>(key: StoredKey, fallback: T) {
   const [value, setValue] = useState(() => (read(key) as T | null) ?? fallback);
   const store = (next: T) => {
     write(key, next);
