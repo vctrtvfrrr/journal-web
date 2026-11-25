@@ -20,7 +20,10 @@ export function NotesPanel() {
   const selected = notebooks.data?.find(({ id }) => id === storedId) ?? notebooks.data?.[0];
 
   return (
-    <section aria-labelledby="notes-heading" className="grid min-w-0 content-start gap-3">
+    <section
+      aria-labelledby="notes-heading"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-3"
+    >
       <h2 id="notes-heading" className="sr-only">
         Notes
       </h2>
@@ -30,14 +33,10 @@ export function NotesPanel() {
       )}
       {selected && <QuickNoteForm notebookId={selected.id} />}
       {notebooks.data && (
-        <Tabs
-          value={selected?.id ?? ""}
-          onValueChange={setStoredId}
-          className="gap-0 border border-border-strong bg-surface"
-        >
-          <div className="flex min-w-0 items-end bg-surface-2 shadow-[inset_0_-1px_0_0_var(--border-strong)]">
+        <Tabs value={selected?.id ?? ""} onValueChange={setStoredId} className="gap-0">
+          <div className="flex min-w-0 items-end shadow-[inset_0_-1px_0_0_var(--border-strong)]">
             {selected ? (
-              <TabsList aria-label="Notebooks" className="min-w-0 flex-1 shadow-none">
+              <TabsList aria-label="Notebooks" className="w-auto min-w-0 shadow-none">
                 {notebooks.data.map((notebook, index, all) => (
                   <NotebookTab
                     key={notebook.id}
@@ -55,9 +54,7 @@ export function NotesPanel() {
                 No notebooks yet. Use + to add a note.
               </p>
             )}
-            <div className="shrink-0 border-l border-border px-[0.5ch]">
-              <NewNoteDialog notebookId={selected?.id} onCreated={setStoredId} />
-            </div>
+            <NewNoteDialog notebookId={selected?.id} onCreated={setStoredId} />
           </div>
           {selected && (
             <TabsContent value={selected.id} className="min-w-0">

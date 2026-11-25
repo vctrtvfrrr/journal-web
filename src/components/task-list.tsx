@@ -7,6 +7,7 @@ import { Markdown } from "./markdown";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { TaskCheckbox } from "./task-checkbox";
 
@@ -18,15 +19,48 @@ const priorityBadge = {
   5: "secondary",
 } as const;
 
-function PriorityBadge({ task }: { task: Task }) {
+const priorityDot = {
+  1: "bg-red",
+  2: "bg-yellow",
+  3: "bg-blue",
+  4: "bg-cyan",
+  5: "bg-border-strong",
+} as const;
+
+type Priority = keyof typeof priorityBadge;
+
+function PriorityBadge({ task, className }: { task: Task; className?: string }) {
   const done = task.status === "done";
   return (
     <Badge
-      variant={done ? "outline" : priorityBadge[task.priority as keyof typeof priorityBadge]}
-      className={cn(done && "border-border text-muted-foreground")}
+      variant={done ? "outline" : priorityBadge[task.priority as Priority]}
+      className={cn(done && "border-border text-muted-foreground", className)}
     >
       P{task.priority}
     </Badge>
+  );
+}
+
+function PriorityDot({ task }: { task: Task }) {
+  const done = task.status === "done";
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label={`Priority P${task.priority}`}
+        className="flex size-6 items-center justify-center lg:hidden"
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "size-2 rounded-full",
+            done ? "bg-muted-foreground/50" : priorityDot[task.priority as Priority],
+          )}
+        />
+      </PopoverTrigger>
+      <PopoverContent side="left" className="w-auto p-[1ch] py-1">
+        <PriorityBadge task={task} />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -43,7 +77,7 @@ function TaskRow({ task }: { task: Task }) {
   return (
     <li
       className={cn(
-        "grid min-h-6 grid-cols-[5ch_minmax(0,1fr)_5ch] items-start border-b border-dashed border-border last:border-b-0 hover:bg-accent/8 focus-within:bg-accent/8",
+        "grid min-h-6 grid-cols-[5ch_minmax(0,1fr)_3ch] items-start lg:grid-cols-[5ch_minmax(0,1fr)_5ch] border-b border-dashed border-border last:border-b-0 hover:bg-accent/8 focus-within:bg-accent/8",
         done && "text-muted-foreground",
       )}
     >
@@ -71,7 +105,8 @@ function TaskRow({ task }: { task: Task }) {
         )}
       </div>
       <div className="flex items-center justify-center self-stretch py-0.5">
-        <PriorityBadge task={task} />
+        <PriorityDot task={task} />
+        <PriorityBadge task={task} className="hidden lg:inline-flex" />
       </div>
     </li>
   );

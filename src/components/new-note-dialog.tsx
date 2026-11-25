@@ -20,7 +20,13 @@ export function NewNoteDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="sm" aria-label="New note" title="New note">
+        <Button
+          type="button"
+          variant="ghost"
+          aria-label="New note"
+          title="New note"
+          className="h-7 shrink-0 px-[1.5ch] text-muted-foreground hover:bg-transparent hover:text-foreground"
+        >
           <span aria-hidden>+</span>
         </Button>
       </DialogTrigger>

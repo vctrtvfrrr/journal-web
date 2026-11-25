@@ -23,7 +23,10 @@ function TasksPanel() {
   const tasks = useTasks();
 
   return (
-    <section aria-labelledby="tasks-heading" className="grid min-w-0 content-start gap-3">
+    <section
+      aria-labelledby="tasks-heading"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-3"
+    >
       <h2 id="tasks-heading" className="sr-only">
         Tasks
       </h2>
@@ -70,7 +73,7 @@ function MobileHome() {
         status={<SyncStatus />}
         footerAction={<ConnectedDevices />}
         tabBar={
-          <TabsList aria-label="View" variant="inverted" className="justify-center">
+          <TabsList aria-label="View" variant="group" className="px-[1ch]">
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>

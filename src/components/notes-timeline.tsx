@@ -97,7 +97,7 @@ function NoteBody({ note }: { note: Note }) {
         {...activationHandlers(
           () => void navigate({ to: "/notes/$noteId", params: { noteId: note.id } }),
         )}
-        className="group min-w-0 hover:bg-accent/8 focus-visible:outline-offset-[-1px]"
+        className="group min-w-0 hover:bg-accent/8 focus-visible:-outline-offset-1"
       >
         <div ref={content} className={cn("min-w-0", !expanded && "max-h-[4lh] overflow-hidden")}>
           <Markdown
@@ -288,7 +288,7 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
     );
 
   return (
-    <div ref={container} className="min-w-0 px-[1ch] py-2 text-sm">
+    <div ref={container} className="min-w-0 py-2 text-sm">
       {rows.map((row) => (
         <TimelineRowView
           key={row.key}

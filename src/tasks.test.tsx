@@ -1,5 +1,5 @@
 import { beforeEach, expect, test } from "bun:test";
-import { screen, waitFor, within } from "@testing-library/react";
+import { type BoundFunctions, screen, waitFor, within, type queries } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { Task, TaskChanges, TaskInput } from "./api/generated";
@@ -50,6 +50,12 @@ function pendingList() {
   return within(screen.getByRole("list", { name: "Pending tasks" }));
 }
 
+function rowTitles(list: BoundFunctions<typeof queries>) {
+  return list
+    .getAllByRole("listitem")
+    .map((row: HTMLElement) => within(row).getAllByRole("button")[0]?.textContent);
+}
+
 test("lists pending tasks with priority, status and description, and hides completed ones", async () => {
   serveTasks([urgent, reading, finished]);
   renderAppAt("/");
@@ -73,6 +79,15 @@ test("lists pending tasks with priority, status and description, and hides compl
   expect(completed.getByRole("checkbox", { name: "Buy milk: done" })).toBeDefined();
 });
 
+test("shows the priority of a task when its dot is clicked", async () => {
+  serveTasks([urgent]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Priority P1" }));
+
+  expect(within(await screen.findByRole("dialog")).getByText("P1")).toBeDefined();
+});
+
 test("lists tasks in progress first within each priority, keeping the API order otherwise", async () => {
   serveTasks([
     aTask({ id: "0193b3a0-0000-7000-8000-000000000111", title: "Call the bank", priority: 1 }),
@@ -93,11 +108,13 @@ test("lists tasks in progress first within each priority, keeping the API order 
   renderAppAt("/");
 
   await screen.findByRole("list", { name: "Pending tasks" });
-  expect(
-    pendingList()
-      .getAllByRole("button")
-      .map((row) => row.textContent),
-  ).toEqual(["File taxes", "Call the bank", "Write notes", "Water plants", "Clean desk"]);
+  expect(rowTitles(pendingList())).toEqual([
+    "File taxes",
+    "Call the bank",
+    "Write notes",
+    "Water plants",
+    "Clean desk",
+  ]);
 });
 
 test("lists completed tasks by most recently updated first", async () => {
@@ -127,11 +144,7 @@ test("lists completed tasks by most recently updated first", async () => {
 
   await userEvent.click(await screen.findByRole("button", { name: /^completed/ }));
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
-  expect(completed.getAllByRole("button").map((row) => row.textContent)).toEqual([
-    "Return books",
-    "Fix the bike",
-    "Renew passport",
-  ]);
+  expect(rowTitles(completed)).toEqual(["Return books", "Fix the bike", "Renew passport"]);
 });
 
 test("says when there are no tasks yet", async () => {
@@ -244,10 +257,7 @@ test("puts a task completed just now at the top of the completed list before the
   await userEvent.click(screen.getByRole("button", { name: /^completed/ }));
 
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
-  expect(completed.getAllByRole("button").map((row) => row.textContent)).toEqual([
-    "Write a letter",
-    "Buy milk",
-  ]);
+  expect(rowTitles(completed)).toEqual(["Write a letter", "Buy milk"]);
 });
 
 test("restores the status and warns when the API refuses the change", async () => {
