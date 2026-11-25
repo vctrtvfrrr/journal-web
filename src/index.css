@@ -203,6 +203,39 @@
   }
 }
 
+@layer components {
+  .markdown > * + * {
+    margin-top: 0.5lh;
+  }
+  .markdown :is(h1, h2, h3) {
+    font-weight: 700;
+  }
+  .markdown h1 {
+    font-size: var(--text-lg);
+  }
+  .markdown ul {
+    padding-left: 2ch;
+    list-style: "- ";
+  }
+  .markdown ol {
+    padding-left: 3ch;
+    list-style: decimal;
+  }
+  .markdown blockquote {
+    border-left: 1px solid var(--border-strong);
+    padding-left: 1ch;
+    color: var(--muted-foreground);
+  }
+  .markdown pre {
+    overflow-x: auto;
+    background: var(--surface-2);
+    padding: 0.25lh 1ch;
+  }
+  .markdown img {
+    max-width: 100%;
+  }
+}
+
 /* A label that sits on the top border of its positioned parent, like a TUI window title. */
 @utility border-label {
   position: absolute;

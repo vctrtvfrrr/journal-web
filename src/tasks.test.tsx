@@ -295,25 +295,94 @@ function serveEditableTasks(initial: Task[]) {
   return patches;
 }
 
-test("edits title, description and priority in the dialog opened from the title", async () => {
-  const patches = serveEditableTasks([urgent]);
+test("shows the task rendered in a dialog opened from the title", async () => {
+  serveEditableTasks([
+    aTask({ title: "Read **Dune**", description: "## Plan\n\n- one chapter a day" }),
+  ]);
   const history = renderAppAt("/");
 
-  await userEvent.click(await screen.findByRole("button", { name: "Pay rent" }));
-  const dialog = within(await screen.findByRole("dialog", { name: "Edit task" }));
-  expect(history.location.pathname).toBe(`/tasks/${urgent.id}`);
+  await userEvent.click(await screen.findByRole("button", { name: "Read Dune" }));
+  const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
+  expect(history.location.pathname).toBe("/tasks/0193b3a0-0000-7000-8000-000000000101");
+  expect(dialog.getByText("Dune").tagName).toBe("STRONG");
+  expect(dialog.getByRole("heading", { name: "Plan" })).toBeDefined();
+  expect(dialog.getByRole("listitem").textContent).toBe("one chapter a day");
+  expect(dialog.queryByRole("textbox")).toBeNull();
+});
+
+test("edits the title in place and stays on the task after saving", async () => {
+  const patches = serveEditableTasks([urgent]);
+  const history = renderAppAt(`/tasks/${urgent.id}`);
+
+  const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
+  await userEvent.click(dialog.getByRole("button", { name: "Pay rent" }));
   const title = dialog.getByLabelText("Title");
+  expect(document.activeElement).toBe(title);
   await userEvent.clear(title);
   await userEvent.type(title, "Pay the rent");
-  await userEvent.clear(dialog.getByLabelText("Description"));
-  await userEvent.click(dialog.getByRole("radio", { name: "P2" }));
   await userEvent.click(dialog.getByRole("button", { name: "save" }));
 
-  expect(await pendingListFound("Pay the rent")).toBeDefined();
-  expect(screen.queryByRole("dialog")).toBeNull();
-  expect(history.location.pathname).toBe("/");
-  expect(pendingList().getByText("P2")).toBeDefined();
-  expect(patches).toEqual([{ title: "Pay the rent", description: "", priority: 2 }]);
+  expect(await dialog.findByRole("button", { name: "Pay the rent" })).toBeDefined();
+  expect(dialog.queryByRole("textbox")).toBeNull();
+  expect(history.location.pathname).toBe(`/tasks/${urgent.id}`);
+  const list = await screen.findByRole("list", { name: "Pending tasks", hidden: true });
+  expect(within(list).getByText("Pay the rent")).toBeDefined();
+  expect(patches).toEqual([{ title: "Pay the rent", description: "Transfer before the 5th" }]);
+});
+
+test("edits the description from the rendered description", async () => {
+  const patches = serveEditableTasks([urgent]);
+  renderAppAt(`/tasks/${urgent.id}`);
+
+  const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
+  await userEvent.click(dialog.getByRole("button", { name: "Transfer before the 5th" }));
+  const description = dialog.getByLabelText("Description");
+  expect(document.activeElement).toBe(description);
+  await userEvent.clear(description);
+  await userEvent.click(dialog.getByRole("button", { name: "save" }));
+
+  expect(await dialog.findByRole("button", { name: "Description" })).toBeDefined();
+  expect(patches).toEqual([{ title: "Pay rent", description: "" }]);
+});
+
+test("cancels the edit with Escape and keeps the dialog open", async () => {
+  const patches = serveEditableTasks([urgent]);
+  renderAppAt(`/tasks/${urgent.id}`);
+
+  const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
+  await userEvent.click(dialog.getByRole("button", { name: "Pay rent" }));
+  await userEvent.type(dialog.getByLabelText("Title"), " now");
+  await userEvent.keyboard("{Escape}");
+
+  expect(dialog.getByRole("button", { name: "Pay rent" })).toBeDefined();
+  expect(screen.getByRole("dialog", { name: "Task" })).toBeDefined();
+  expect(patches).toEqual([]);
+});
+
+test("changes the priority right away", async () => {
+  const patches = serveEditableTasks([urgent]);
+  renderAppAt(`/tasks/${urgent.id}`);
+
+  const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
+  await userEvent.click(dialog.getByRole("radio", { name: "P2" }));
+
+  await waitFor(() => expect(patches).toEqual([{ priority: 2 }]));
+  const list = await screen.findByRole("list", { name: "Pending tasks", hidden: true });
+  await waitFor(() => expect(within(list).getByText("P2")).toBeDefined());
+  expect(dialog.getByRole("radio", { name: "P2" }).getAttribute("aria-checked")).toBe("true");
+});
+
+test("opens links in the description in a new tab without starting to edit", async () => {
+  serveEditableTasks([aTask({ description: "See [the docs](https://example.com/docs)" })]);
+  renderAppAt("/tasks/0193b3a0-0000-7000-8000-000000000101");
+
+  const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
+  const link = dialog.getByRole("link", { name: "the docs" });
+  expect(link.getAttribute("target")).toBe("_blank");
+  link.addEventListener("click", (event) => event.preventDefault());
+  await userEvent.click(link);
+
+  expect(dialog.queryByRole("textbox")).toBeNull();
 });
 
 test("edits a completed task from its title", async () => {
@@ -322,21 +391,22 @@ test("edits a completed task from its title", async () => {
 
   await userEvent.click(await screen.findByRole("button", { name: /^completed/ }));
   await userEvent.click(screen.getByRole("button", { name: "Buy milk" }));
-  const dialog = within(await screen.findByRole("dialog", { name: "Edit task" }));
+  const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
   expect(history.location.pathname).toBe(`/tasks/${finished.id}`);
+  await userEvent.click(dialog.getByRole("button", { name: "Buy milk" }));
   await userEvent.type(dialog.getByLabelText("Title"), " and eggs");
   await userEvent.click(dialog.getByRole("button", { name: "save" }));
 
-  await waitFor(() => expect(history.location.pathname).toBe("/"));
-  expect(patches).toEqual([{ title: "Buy milk and eggs", description: "", priority: 2 }]);
+  expect(await dialog.findByRole("button", { name: "Buy milk and eggs" })).toBeDefined();
+  expect(patches).toEqual([{ title: "Buy milk and eggs", description: "" }]);
 });
 
 test("opens a task from its address and changes its status in the dialog", async () => {
   const patches = serveEditableTasks([reading]);
   renderAppAt(`/tasks/${reading.id}`);
 
-  const dialog = within(await screen.findByRole("dialog", { name: "Edit task" }));
-  expect((dialog.getByLabelText("Title") as HTMLInputElement).value).toBe("Read a chapter");
+  const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
+  expect(dialog.getByRole("button", { name: "Read a chapter" })).toBeDefined();
   await userEvent.click(dialog.getByRole("checkbox", { name: "Read a chapter: todo" }));
 
   expect(dialog.getByRole("checkbox", { name: "Read a chapter: doing" })).toBeDefined();
@@ -349,14 +419,14 @@ test("goes back to the list when the task in the address does not exist", async 
 
   expect(await screen.findByText("Task not found.")).toBeDefined();
   expect(history.location.pathname).toBe("/");
-  expect(screen.queryByRole("dialog", { name: "Edit task" })).toBeNull();
+  expect(screen.queryByRole("dialog", { name: "Task" })).toBeNull();
 });
 
 test("deletes a task from its dialog and goes back to the list", async () => {
   serveEditableTasks([urgent, reading]);
   const history = renderAppAt(`/tasks/${urgent.id}`);
 
-  const dialog = within(await screen.findByRole("dialog", { name: "Edit task" }));
+  const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
   await userEvent.click(dialog.getByRole("button", { name: "Delete Pay rent" }));
   const confirm = within(await screen.findByRole("dialog", { name: "Delete task?" }));
   await userEvent.click(confirm.getByRole("button", { name: "delete task" }));
@@ -417,7 +487,7 @@ test("opens a task from the keyboard", async () => {
   (await screen.findByRole("button", { name: "Read a chapter" })).focus();
   await userEvent.keyboard("{Enter}");
 
-  expect(await screen.findByRole("dialog", { name: "Edit task" })).toBeDefined();
+  expect(await screen.findByRole("dialog", { name: "Task" })).toBeDefined();
   expect(history.location.pathname).toBe(`/tasks/${reading.id}`);
 });
 

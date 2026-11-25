@@ -11,7 +11,7 @@ const allowedElements = { inline, description, note };
 export type MarkdownLevel = keyof typeof allowedElements;
 
 const link: Components["a"] = ({ node: _node, ...props }) => (
-  <a {...props} target="_blank" rel="noopener noreferrer" />
+  <a {...props} target="_blank" rel="noopener noreferrer" className="text-accent-ink underline" />
 );
 
 const image: Components["img"] = ({ node: _node, ...props }) => (

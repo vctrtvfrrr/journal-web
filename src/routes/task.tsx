@@ -1,8 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { type ReactNode, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import type { Task } from "../api/generated";
 import {
@@ -13,6 +13,7 @@ import {
 } from "../api/generated/@tanstack/react-query.gen";
 import { zTaskChanges } from "../api/generated/zod.gen";
 import { ErrorText, Field } from "../components/field";
+import { Markdown } from "../components/markdown";
 import { TaskCheckbox } from "../components/task-checkbox";
 import { TaskDelete } from "../components/task-delete";
 import { Alert, AlertDescription } from "../components/ui/alert";
@@ -28,35 +29,46 @@ import { Input, Textarea } from "../components/ui/input";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Skeleton } from "../components/ui/skeleton";
 import { toast } from "../components/ui/sonner";
+import { activationHandlers } from "../lib/activation";
 import { apiTrim } from "../lib/api-trim";
 import { describeError, fieldErrors, isProblem, pointerField } from "../lib/problem";
+import { cn } from "../lib/utils";
 
-const taskForm = zTaskChanges.pick({ title: true, description: true, priority: true });
-type TaskForm = z.infer<typeof taskForm>;
+const taskText = zTaskChanges.pick({ title: true, description: true });
+type TaskText = z.infer<typeof taskText>;
+type TaskField = keyof TaskText;
 const priorities = [1, 2, 3, 4, 5];
 
 function isMissingTask(error: unknown) {
   return isProblem(error) && (error.status === 404 || error.status === 400);
 }
 
-function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
+function useUpdateTask(task: Task, ownsErrors: boolean) {
   const queryClient = useQueryClient();
-  const [formError, setFormError] = useState<string>();
-  const update = useMutation({
+  return useMutation({
     ...updateTaskMutation(),
-    meta: { showsOwnError: true },
+    meta: { showsOwnError: ownsErrors },
     onSuccess: (saved) => {
       queryClient.setQueryData(getTaskQueryKey({ path: { id: task.id } }), saved);
       return queryClient.invalidateQueries({ queryKey: listTasksQueryKey() });
     },
   });
-  const form = useForm<TaskForm>({
-    resolver: zodResolver(taskForm),
-    defaultValues: {
-      title: task.title,
-      description: task.description ?? "",
-      priority: task.priority,
-    },
+}
+
+function TaskTextEditor({
+  task,
+  focus,
+  onDone,
+}: {
+  task: Task;
+  focus: TaskField;
+  onDone: () => void;
+}) {
+  const [formError, setFormError] = useState<string>();
+  const update = useUpdateTask(task, true);
+  const form = useForm<TaskText>({
+    resolver: zodResolver(taskText),
+    defaultValues: { title: task.title, description: task.description ?? "" },
   });
   const { errors, isSubmitting } = form.formState;
 
@@ -71,66 +83,161 @@ function TaskEditForm({ task, onDone }: { task: Task; onDone: () => void }) {
       if (invalidFields.length === 0) return setFormError(failure.detail);
       for (const { pointer, detail } of invalidFields) {
         const field = pointerField(pointer);
-        if (field === "title" || field === "description" || field === "priority")
-          form.setError(field, { message: detail });
+        if (field === "title" || field === "description") form.setError(field, { message: detail });
         else setFormError(`${field}: ${detail}`);
       }
     }
   });
 
   return (
-    <form className="grid gap-3" onSubmit={submit} noValidate>
-      <Field label="Title" htmlFor="task-title" error={errors.title?.message}>
-        <div className="flex items-center gap-[1ch]">
-          <TaskCheckbox task={task} />
+    <form
+      className="grid gap-3"
+      onSubmit={submit}
+      noValidate
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey)) return;
+        event.preventDefault();
+        void submit();
+      }}
+    >
+      <div className="grid gap-1 border border-border-strong bg-background p-1 focus-within:border-accent">
+        <Field
+          label="Title"
+          htmlFor="task-title"
+          error={errors.title?.message}
+          className="[&_label]:sr-only"
+        >
           <Input
             id="task-title"
+            autoFocus={focus === "title"}
             aria-invalid={!!errors.title}
+            className="border-0 font-bold"
             {...form.register("title", { setValueAs: apiTrim })}
           />
-        </div>
-      </Field>
-      <Field label="Description" htmlFor="task-description" error={errors.description?.message}>
-        <Textarea
-          id="task-description"
-          className="resize-y"
-          aria-invalid={!!errors.description}
-          {...form.register("description", { setValueAs: apiTrim })}
-        />
-      </Field>
-      <Field label="Priority" htmlFor="task-priority" error={errors.priority?.message}>
-        <Controller
-          control={form.control}
-          name="priority"
-          render={({ field }) => (
-            <RadioGroup
-              id="task-priority"
-              aria-label="Priority"
-              className="flex gap-[2ch]"
-              value={String(field.value)}
-              onValueChange={(value) => field.onChange(Number(value))}
-            >
-              {priorities.map((priority) => (
-                <label key={priority} className="flex items-center gap-[0.5ch]">
-                  <RadioGroupItem value={String(priority)} aria-label={`P${priority}`} />
-                  <span aria-hidden>P{priority}</span>
-                </label>
-              ))}
-            </RadioGroup>
-          )}
-        />
-      </Field>
+        </Field>
+        <Field
+          label="Description"
+          htmlFor="task-description"
+          error={errors.description?.message}
+          className="[&_label]:sr-only"
+        >
+          <Textarea
+            id="task-description"
+            autoFocus={focus === "description"}
+            placeholder="Description"
+            aria-invalid={!!errors.description}
+            className="max-h-[50dvh] min-h-[3lh] resize-none border-0 field-sizing-content"
+            {...form.register("description", { setValueAs: apiTrim })}
+          />
+        </Field>
+      </div>
       {formError && <ErrorText>{formError}</ErrorText>}
       <DialogFooter className="flex-row">
         <Button variant="default" size="sm" type="submit" disabled={isSubmitting}>
           save
         </Button>
-        <Button variant="secondary" size="sm" type="button" onClick={onDone} disabled={isSubmitting}>
+        <Button
+          variant="secondary"
+          size="sm"
+          type="button"
+          onClick={onDone}
+          disabled={isSubmitting}
+        >
           cancel
         </Button>
-        <TaskDelete task={task} onDeleted={onDone} className="ml-auto" />
       </DialogFooter>
     </form>
+  );
+}
+
+function EditableText({
+  onEdit,
+  className,
+  children,
+}: {
+  onEdit: () => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      {...activationHandlers(onEdit)}
+      className={cn("min-w-0 wrap-anywhere hover:bg-surface-2", className)}
+    >
+      {children}
+    </div>
+  );
+}
+
+function TaskPriority({ task }: { task: Task }) {
+  const update = useUpdateTask(task, false);
+  const priority = update.isPending ? update.variables.body.priority : task.priority;
+
+  return (
+    <Field label="Priority" htmlFor="task-priority">
+      <RadioGroup
+        id="task-priority"
+        aria-label="Priority"
+        className="flex gap-[2ch]"
+        value={String(priority)}
+        onValueChange={(value) =>
+          update.mutate({ path: { id: task.id }, body: { priority: Number(value) } })
+        }
+      >
+        {priorities.map((option) => (
+          <label key={option} className="flex items-center gap-[0.5ch]">
+            <RadioGroupItem value={String(option)} aria-label={`P${option}`} />
+            <span aria-hidden>P{option}</span>
+          </label>
+        ))}
+      </RadioGroup>
+    </Field>
+  );
+}
+
+function TaskDetails({
+  task,
+  editing,
+  onEdit,
+  onClose,
+}: {
+  task: Task;
+  editing: TaskField | undefined;
+  onEdit: (field: TaskField | undefined) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="grid gap-3">
+      <div className="flex items-start gap-[1ch]">
+        <TaskCheckbox task={task} />
+        <div className="grid min-w-0 flex-1 gap-1">
+          {editing ? (
+            <TaskTextEditor task={task} focus={editing} onDone={() => onEdit(undefined)} />
+          ) : (
+            <>
+              <EditableText onEdit={() => onEdit("title")} className="text-lg font-bold">
+                <Markdown level="inline">{task.title}</Markdown>
+              </EditableText>
+              <EditableText onEdit={() => onEdit("description")}>
+                {task.description ? (
+                  <Markdown level="description">{task.description}</Markdown>
+                ) : (
+                  <span className="text-muted-foreground">Description</span>
+                )}
+              </EditableText>
+            </>
+          )}
+        </div>
+      </div>
+      <TaskPriority task={task} />
+      {!editing && (
+        <DialogFooter className="flex-row">
+          <TaskDelete task={task} onDeleted={onClose} className="ml-auto" />
+        </DialogFooter>
+      )}
+    </div>
   );
 }
 
@@ -138,6 +245,7 @@ export function TaskPage() {
   const { taskId } = useParams({ from: "/home/tasks/$taskId" });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<TaskField>();
   const task = useQuery({
     ...getTaskOptions({ path: { id: taskId } }),
     meta: { handledByRoute: true },
@@ -154,10 +262,17 @@ export function TaskPage() {
 
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
-      <DialogContent label="Edit task">
-        <DialogTitle className="sr-only">Edit task</DialogTitle>
+      <DialogContent
+        label="Task"
+        onEscapeKeyDown={(event) => {
+          if (!editing) return;
+          event.preventDefault();
+          setEditing(undefined);
+        }}
+      >
+        <DialogTitle className="sr-only">Task</DialogTitle>
         <DialogDescription className="sr-only">
-          Change the task title, description, or priority.
+          The task title, description, and priority. Click the title or description to edit them.
         </DialogDescription>
         {task.isPending && <Skeleton className="h-40" />}
         {task.isError && !isMissingTask(task.error) && (
@@ -165,7 +280,9 @@ export function TaskPage() {
             <AlertDescription>{describeError(task.error)}</AlertDescription>
           </Alert>
         )}
-        {task.data && <TaskEditForm task={task.data} onDone={close} />}
+        {task.data && (
+          <TaskDetails task={task.data} editing={editing} onEdit={setEditing} onClose={close} />
+        )}
       </DialogContent>
     </Dialog>
   );
