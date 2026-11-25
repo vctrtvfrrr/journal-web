@@ -28,7 +28,7 @@ beforeEach(() => {
 
 async function openDevices() {
   renderAppAt("/");
-  await userEvent.click(await screen.findByRole("button", { name: "Connected devices" }));
+  await userEvent.click(await screen.findByRole("button", { name: "connected devices" }));
   return within(await screen.findByRole("dialog", { name: "Connected devices" }));
 }
 

@@ -105,7 +105,7 @@ test("deletes a notebook from its tab menu and selects the one to its left", asy
   expect(
     confirm.getByText("Delete notebook Plants? Its notes will disappear from the timeline."),
   ).toBeDefined();
-  await userEvent.click(confirm.getByRole("button", { name: "Delete notebook" }));
+  await userEvent.click(confirm.getByRole("button", { name: "delete notebook" }));
 
   await waitFor(() => expect(notebookTabs().queryByRole("tab", { name: "Plants" })).toBeNull());
   expect(notebookTabs().getByRole("tab", { name: "Diary" }).getAttribute("aria-selected")).toBe(

@@ -55,7 +55,7 @@ export function ConfirmDialog({
             disabled={status.isPending}
             onClick={() => change(false)}
           >
-            Cancel
+            cancel
           </Button>
           <Button
             type="button"

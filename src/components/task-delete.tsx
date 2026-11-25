@@ -44,7 +44,7 @@ export function TaskDelete({
       }
       title="Delete task?"
       description="Remove this task from your list?"
-      confirmLabel="Delete task"
+      confirmLabel="delete task"
       status={remove}
       onConfirm={() => remove.mutate({ path: { id: task.id } })}
     >

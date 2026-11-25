@@ -68,7 +68,7 @@ test("lists pending tasks with priority, status and description, and hides compl
   );
   expect(screen.queryByText("Buy milk")).toBeNull();
 
-  await userEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+  await userEvent.click(screen.getByRole("button", { name: /^completed/ }));
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
   expect(completed.getByRole("checkbox", { name: "Buy milk: done" })).toBeDefined();
 });
@@ -125,7 +125,7 @@ test("lists completed tasks by most recently updated first", async () => {
   ]);
   renderAppAt("/");
 
-  await userEvent.click(await screen.findByRole("button", { name: /^Completed/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /^completed/ }));
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
   expect(completed.getAllByRole("button").map((row) => row.textContent)).toEqual([
     "Return books",
@@ -155,7 +155,7 @@ test("shows a failed load with a retry, without the create field", async () => {
   expect(screen.queryByLabelText("Task title")).toBeNull();
 
   failing = false;
-  await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+  await userEvent.click(within(alert).getByRole("button", { name: "retry" }));
   expect(await screen.findByText("Read a chapter")).toBeDefined();
   expect(screen.getByLabelText("Task title")).toBeDefined();
 });
@@ -222,7 +222,7 @@ test("cycles the status from todo to doing to done before the API answers", asyn
 
   answer();
   await waitFor(() => expect(patches).toEqual([{ status: "doing" }, { status: "done" }]));
-  await userEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+  await userEvent.click(screen.getByRole("button", { name: /^completed/ }));
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
   await userEvent.click(completed.getByRole("checkbox", { name: "Read a chapter: done" }));
   expect(await pendingListFound("Read a chapter")).toBeDefined();
@@ -241,7 +241,7 @@ test("puts a task completed just now at the top of the completed list before the
   renderAppAt("/");
 
   await userEvent.click(await screen.findByRole("checkbox", { name: "Write a letter: doing" }));
-  await userEvent.click(screen.getByRole("button", { name: /^Completed/ }));
+  await userEvent.click(screen.getByRole("button", { name: /^completed/ }));
 
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
   expect(completed.getAllByRole("button").map((row) => row.textContent)).toEqual([
@@ -320,7 +320,7 @@ test("edits a completed task from its title", async () => {
   const patches = serveEditableTasks([finished]);
   const history = renderAppAt("/");
 
-  await userEvent.click(await screen.findByRole("button", { name: /^Completed/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /^completed/ }));
   await userEvent.click(screen.getByRole("button", { name: "Buy milk" }));
   const dialog = within(await screen.findByRole("dialog", { name: "Edit task" }));
   expect(history.location.pathname).toBe(`/tasks/${finished.id}`);
@@ -359,7 +359,7 @@ test("deletes a task from its dialog and goes back to the list", async () => {
   const dialog = within(await screen.findByRole("dialog", { name: "Edit task" }));
   await userEvent.click(dialog.getByRole("button", { name: "Delete Pay rent" }));
   const confirm = within(await screen.findByRole("dialog", { name: "Delete task?" }));
-  await userEvent.click(confirm.getByRole("button", { name: "Delete task" }));
+  await userEvent.click(confirm.getByRole("button", { name: "delete task" }));
 
   await waitFor(() => expect(history.location.pathname).toBe("/"));
   await waitFor(() => expect(screen.queryByText("Pay rent")).toBeNull());

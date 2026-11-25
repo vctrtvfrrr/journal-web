@@ -8,7 +8,7 @@ export function LoadError({ error, onRetry }: { error: unknown; onRetry: () => v
       <AlertDescription className="flex items-center gap-[1ch]">
         {describeError(error)}
         <Button type="button" variant="bracket" size="sm" onClick={onRetry}>
-          Retry
+          retry
         </Button>
       </AlertDescription>
     </Alert>

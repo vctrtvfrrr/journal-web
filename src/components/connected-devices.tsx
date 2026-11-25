@@ -91,7 +91,7 @@ export function ConnectedDevices() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" variant="link" size="sm">
-          Connected devices
+          connected devices
         </Button>
       </DialogTrigger>
       <DialogContent label="Connected devices">
@@ -109,7 +109,7 @@ export function ConnectedDevices() {
               size="sm"
               onClick={() => void devices.refetch()}
             >
-              Retry
+              retry
             </Button>
           </div>
         )}

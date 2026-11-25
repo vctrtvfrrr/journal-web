@@ -114,7 +114,7 @@ test("shows a failed notebook load with a retry inside the notes column", async 
   expect(await screen.findByText("Water the ferns")).toBeDefined();
 
   failing = false;
-  await userEvent.click(notes.getByRole("button", { name: "Retry" }));
+  await userEvent.click(notes.getByRole("button", { name: "retry" }));
   expect(await notes.findByRole("tab", { name: "Diary" })).toBeDefined();
 });
 

@@ -127,7 +127,7 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
                 aria-hidden
                 className="before:content-['[+]'] group-data-[state=open]:before:content-['[-]']"
               />
-              <span>Completed</span>
+              <span>completed</span>
               <span className="ml-auto text-muted-foreground">{completed.length}</span>
             </Button>
           </CollapsibleTrigger>

@@ -196,7 +196,7 @@ test("deletes a note from its dialog after confirming", async () => {
   const dialog = within(await screen.findByRole("dialog", { name: "Edit note" }));
   await userEvent.click(await dialog.findByRole("button", { name: "Delete note" }));
   const confirm = within(await screen.findByRole("dialog", { name: "Delete note?" }));
-  await userEvent.click(confirm.getByRole("button", { name: "Delete note" }));
+  await userEvent.click(confirm.getByRole("button", { name: "delete note" }));
 
   await waitFor(() => expect(history.location.pathname).toBe("/"));
   expect(requests).toEqual([{ method: "DELETE", path: `/notes/${lunch.id}` }]);

@@ -52,7 +52,7 @@ function NoteDelete({ note, onDeleted }: { note: Note; onDeleted: () => void }) 
       }
       title="Delete note?"
       description="Remove this note from its timeline?"
-      confirmLabel="Delete note"
+      confirmLabel="delete note"
       status={remove}
       onConfirm={() => remove.mutate({ path: { id: note.id } })}
     />

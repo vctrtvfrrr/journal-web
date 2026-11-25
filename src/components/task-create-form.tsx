@@ -54,7 +54,7 @@ export function TaskCreateForm() {
         />
       </Field>
       <Button type="submit" aria-label="Add task" disabled={busy}>
-        <span aria-hidden>+</span> Add
+        <span aria-hidden>+</span> add
       </Button>
     </form>
   );

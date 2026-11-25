@@ -107,7 +107,7 @@ function NotebookDelete({
       onOpenChange={onOpenChange}
       title="Delete notebook?"
       description={`Delete notebook ${notebook.name}? Its notes will disappear from the timeline.`}
-      confirmLabel="Delete notebook"
+      confirmLabel="delete notebook"
       status={remove}
       onConfirm={() => remove.mutate({ path: { id: notebook.id } })}
     />
