@@ -7,6 +7,7 @@ import { apiTrim } from "../lib/api-trim";
 import { currentMinute } from "../lib/partial-date";
 import { useCreateNote } from "../lib/notes";
 import { describeError, fieldError } from "../lib/problem";
+import { useRevealNote } from "../lib/reveal-note";
 import { Field } from "./field";
 import { Textarea } from "./ui/input";
 
@@ -15,6 +16,7 @@ const quickNote = zNoteInput.pick({ content: true });
 export function QuickNoteForm({ notebookId }: { notebookId: string }) {
   const id = useId();
   const create = useCreateNote();
+  const { reveal } = useRevealNote();
   const form = useForm<z.infer<typeof quickNote>>({
     resolver: zodResolver(quickNote),
     defaultValues: { content: "" },
@@ -24,10 +26,11 @@ export function QuickNoteForm({ notebookId }: { notebookId: string }) {
 
   const submit = form.handleSubmit(async ({ content }) => {
     try {
-      await create.mutateAsync({
+      const note = await create.mutateAsync({
         body: { notebook_id: notebookId, content, date: currentMinute() },
       });
       form.reset();
+      reveal(note);
     } catch (failure) {
       form.setError("content", {
         message: fieldError(failure, "content") ?? describeError(failure),

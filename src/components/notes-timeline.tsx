@@ -3,12 +3,14 @@ import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import type { Note } from "../api/generated";
 import { activationHandlers } from "../lib/activation";
 import { useTimeline } from "../lib/notes";
+import { useRevealNote } from "../lib/reveal-note";
 import {
   type Connector,
   countNotes,
   flattenTimeline,
   formatTime,
   groupNotes,
+  parsePartialDate,
   type TimelineRow,
 } from "../lib/timeline";
 import { cn } from "../lib/utils";
@@ -125,16 +127,22 @@ function firstLine(content: string) {
 function TimelineRowView({
   row,
   collapsed,
+  highlighted,
   onToggle,
 }: {
   row: TimelineRow;
   collapsed: boolean;
+  highlighted: boolean;
   onToggle: () => void;
 }) {
   const time = row.kind === "note" ? formatTime(row.date) : null;
 
   return (
-    <div className="flex min-h-6 min-w-0">
+    <div
+      data-note={row.kind === "note" ? row.key : undefined}
+      data-highlighted={highlighted || undefined}
+      className={cn("flex min-h-6 min-w-0", highlighted && "note-highlight")}
+    >
       {row.lanes.map((connector, lane) => (
         <Lane key={lane} connector={connector} />
       ))}
@@ -192,9 +200,26 @@ function OlderNotesSentinel({ onVisible }: { onVisible: () => void }) {
   return <div ref={sentinel} aria-hidden />;
 }
 
+function groupKeysAbove(note: Note) {
+  const { year, month, day } = parsePartialDate(note.date);
+  return [year, month && `${year}-${month}`, day && `${year}-${month}-${day}`].filter(
+    (key) => key !== undefined,
+  );
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
+const HIGHLIGHT_MS = 2000;
+
 export function NotesTimeline({ notebook }: { notebook: string }) {
   const timeline = useTimeline(notebook);
+  const container = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const [highlighted, setHighlighted] = useState<string>();
+  const { target, done } = useRevealNote();
+  const revealing = target?.notebook_id === notebook ? target.id : undefined;
   const notes = useMemo(
     () => timeline.data?.pages.flatMap((page) => page.notes) ?? [],
     [timeline.data],
@@ -203,6 +228,35 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
     () => flattenTimeline(groupNotes(notes), timeline.hasNextPage, collapsed),
     [notes, timeline.hasNextPage, collapsed],
   );
+
+  useEffect(() => {
+    if (!revealing) return;
+    const note = notes.find(({ id }) => id === revealing);
+    if (note) {
+      setCollapsed((previous) => {
+        const next = new Set(previous);
+        for (const key of [...groupKeysAbove(note), note.id]) next.delete(key);
+        return next;
+      });
+      setHighlighted(note.id);
+      done();
+    } else if (!timeline.isFetching) {
+      if (timeline.hasNextPage) void timeline.fetchNextPage();
+      else done();
+    }
+  }, [revealing, notes, timeline.isFetching, timeline.hasNextPage]);
+
+  useEffect(() => {
+    if (!highlighted) return;
+    const row = container.current?.querySelector(`[data-note="${highlighted}"]`);
+    row?.scrollIntoView?.({
+      block: "center",
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
+    const timer = setTimeout(() => setHighlighted(undefined), HIGHLIGHT_MS);
+    return () => clearTimeout(timer);
+  }, [highlighted]);
+
   const toggle = (key: string) =>
     setCollapsed((previous) => {
       const next = new Set(previous);
@@ -238,12 +292,13 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
     );
 
   return (
-    <div className="min-w-0 px-[1ch] py-2 text-sm">
+    <div ref={container} className="min-w-0 px-[1ch] py-2 text-sm">
       {rows.map((row) => (
         <TimelineRowView
           key={row.key}
           row={row}
           collapsed={collapsed.has(row.key)}
+          highlighted={row.key === highlighted}
           onToggle={() => toggle(row.key)}
         />
       ))}

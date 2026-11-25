@@ -236,6 +236,27 @@
   }
 }
 
+@keyframes note-highlight {
+  from {
+    background-color: color-mix(in oklab, var(--accent) 18%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+@layer components {
+  .note-highlight {
+    animation: note-highlight 2s ease-out forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .note-highlight {
+      animation: none;
+      background-color: color-mix(in oklab, var(--accent) 18%, transparent);
+    }
+  }
+}
+
 /* A label that sits on the top border of its positioned parent, like a TUI window title. */
 @utility border-label {
   position: absolute;

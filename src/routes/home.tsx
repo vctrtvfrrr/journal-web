@@ -10,6 +10,7 @@ import { TaskList } from "../components/task-list";
 import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useNotebooks } from "../lib/notebooks";
+import { RevealNoteProvider } from "../lib/reveal-note";
 import { useStoredState } from "../lib/stored-state";
 import { useMediaQuery } from "../lib/use-media-query";
 
@@ -100,5 +101,5 @@ function DesktopHome() {
 
 export function HomePage() {
   const desktop = useMediaQuery("(min-width: 1024px)");
-  return desktop ? <DesktopHome /> : <MobileHome />;
+  return <RevealNoteProvider>{desktop ? <DesktopHome /> : <MobileHome />}</RevealNoteProvider>;
 }

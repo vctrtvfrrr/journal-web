@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { useNotebooks } from "../lib/notebooks";
+import { useRevealNote } from "../lib/reveal-note";
 import { useStoredState } from "../lib/stored-state";
 import { LoadError } from "./load-error";
 import { Skeleton } from "./ui/skeleton";
@@ -11,6 +13,10 @@ import { Tabs, TabsContent, TabsList } from "./ui/tabs";
 export function NotesPanel() {
   const notebooks = useNotebooks();
   const [storedId, setStoredId] = useStoredState<string>("journal-notebook", "");
+  const revealing = useRevealNote().target?.notebook_id;
+  useEffect(() => {
+    if (revealing) setStoredId(revealing);
+  }, [revealing]);
   const selected = notebooks.data?.find(({ id }) => id === storedId) ?? notebooks.data?.[0];
 
   return (

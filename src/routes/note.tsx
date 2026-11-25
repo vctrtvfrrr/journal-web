@@ -17,6 +17,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { toast } from "../components/ui/sonner";
 import { describeError, isProblem } from "../lib/problem";
 import { timelineQueryKey } from "../lib/notes";
+import { useRevealNote } from "../lib/reveal-note";
 
 function isMissingNote(error: unknown) {
   return isProblem(error) && (error.status === 404 || error.status === 400);
@@ -61,6 +62,7 @@ function NoteDelete({ note, onDeleted }: { note: Note; onDeleted: () => void }) 
 
 function NoteEditForm({ note, onDone }: { note: Note; onDone: () => void }) {
   const queryClient = useQueryClient();
+  const { reveal } = useRevealNote();
   const update = useMutation({
     ...updateNoteMutation(),
     meta: { showsOwnError: true },
@@ -79,8 +81,9 @@ function NoteEditForm({ note, onDone }: { note: Note; onDone: () => void }) {
       notebookId={note.notebook_id}
       defaultValues={{ content: note.content, date: note.date }}
       onSave={async (changes) => {
-        await update.mutateAsync({ path: { id: note.id }, body: changes });
+        const saved = await update.mutateAsync({ path: { id: note.id }, body: changes });
         onDone();
+        reveal(saved);
       }}
       onCancel={onDone}
       extraAction={<NoteDelete note={note} onDeleted={onDone} />}
