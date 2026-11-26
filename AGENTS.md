@@ -10,10 +10,6 @@ Everything under `src/api/generated/` is generated from it with `bun run gen` an
 
 The client sends the `Contract-Version` header on every request (`src/api/contract.ts`), so the generator drops that parameter from the generated calls (`openapi-ts.config.ts`).
 
-## Domain docs
-
-Glossary, contract and cross-repo ADRs live in `spec/`. See `docs/agents/domain.md`.
-
 ## Conventions
 
 - No path aliases; use relative imports.
@@ -23,3 +19,17 @@ Glossary, contract and cross-repo ADRs live in `spec/`. See `docs/agents/domain.
 ## Testing
 
 `bun test` runs everything. UI tests render `<App history={createMemoryHistory(...)} />` and mock the API with MSW (`test/api.ts`), typed with the generated types. Like the API, the mock rejects any `/api` request without `Contract-Version`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in Gitea (`vctrtvfrrr/journal-web` on `git.codelab.tec.br`), accessed via the REST API with `curl`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Glossary, contract and cross-repo ADRs live in `spec/`, web-only ADRs in `docs/adr/`. See `docs/agents/domain.md`.
