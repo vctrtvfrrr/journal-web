@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [master]
+  pull_request:
+    branches: [master]
 
 jobs:
   check:
@@ -26,3 +28,46 @@ jobs:
       - run: bun run fmt:check
       - run: bun test
       - run: bun run build
+
+  release:
+    needs: check
+    if: github.event_name == 'push'
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      code: read
+      releases: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+          token: ${{ secrets.SPEC_TOKEN }}
+
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: 1.4.5
+
+      - name: Decide release
+        id: release
+        run: bun run release
+        env:
+          RELEASE_NOTES: ${{ runner.temp }}/release-notes.md
+
+      - name: Create tag and release
+        if: steps.release.outputs.release == 'true'
+        env:
+          GITEA_API_URL: ${{ gitea.api_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_NOTES: ${{ runner.temp }}/release-notes.md
+        run: |
+          jq -n --arg tag "v$VERSION" --arg sha "$GITHUB_SHA" --rawfile body "$RELEASE_NOTES" \
+            '{tag_name: $tag, target_commitish: $sha, name: $tag, body: $body}' |
+            curl -fsS -X POST "$GITEA_API_URL/repos/$GITEA_REPOSITORY/releases" \
+              -H "Authorization: token $GITEA_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data @-

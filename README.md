@@ -44,6 +44,7 @@ O app envia o header `Contract-Version` em toda requisição. Se a API recusar a
 | `lint`, `fmt`        | `oxlint` e `oxfmt`. `fmt:check` só verifica.                                            |
 | `gen`                | Regenera `src/api/generated` a partir de `spec/openapi.yaml`.                           |
 | `check:contract-tag` | Falha se o commit do `spec/` não tiver a tag `v<info.version>`.                         |
+| `release`            | Decide a próxima versão a partir dos commits desde a última tag. Usado pelo CI.         |
 
 O `bun test` roda os testes. Os testes de UI usam happy-dom, Testing Library e MSW.
 
@@ -55,4 +56,8 @@ O `Dockerfile` gera a imagem com os arquivos estáticos e o `server.ts`, que esc
 
 ## CI
 
-O workflow do Gitea Actions faz checkout com o submódulo, confere a tag do `spec/` e roda typecheck, lint, formatação, testes e build. Ele precisa do secret `SPEC_TOKEN`, um token pessoal read-only com acesso ao repositório `journal-spec`. O token automático do Actions não serve, porque só enxerga o próprio repositório.
+O workflow do Gitea Actions roda em push e em pull request para a `master`. Ele faz checkout com o submódulo, confere a tag do `spec/` e roda typecheck, lint, formatação, testes e build. Ele precisa do secret `SPEC_TOKEN`, um token pessoal read-only com acesso ao repositório `journal-spec`. O token automático do Actions não serve, porque só enxerga o próprio repositório.
+
+## Releases
+
+Todo push na `master` que passa no CI pode publicar uma tag `vX.Y.Z` e uma Release no Gitea. A versão vem dos Conventional Commits desde a última tag: uma breaking change (`!` ou um footer `BREAKING CHANGE:`) sobe o minor na 0.x e o major a partir da 1.0.0, `feat` sobe o minor, e `fix` e `perf` sobem o patch. Os outros tipos não publicam nada, e commits fora do Conventional Commits são ignorados com um aviso. Um footer `Release-As: X.Y.Z` define a versão explicitamente; é o único jeito de chegar à 1.0.0. A versão do app é independente da versão do contrato, que as notas da Release informam.

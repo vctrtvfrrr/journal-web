@@ -1,6 +1,5 @@
 {
   "name": "journal-web",
-  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +13,8 @@
     "fmt:check": "oxfmt --check",
     "gen": "bun --bun openapi-ts",
     "postinstall": "bun run gen",
-    "check:contract-tag": "bun scripts/check-contract-tag.ts"
+    "check:contract-tag": "bun scripts/check-contract-tag.ts",
+    "release": "bun scripts/release.ts"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
