@@ -1,3 +1,4 @@
+import "./api/contract";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, type RouterHistory } from "@tanstack/react-router";
 import { useState } from "react";

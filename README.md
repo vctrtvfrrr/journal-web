@@ -17,32 +17,33 @@ O login envia `token_delivery: "cookie"`, e a API grava o token no cookie `__Sec
 
 ## Contrato da API
 
-O app depende só do contrato publicado pela API. O arquivo `contract/openapi.json` é a cópia exata do `docs/openapi.json` de uma tag da API, e o `info.version` dele diz qual versão o app usa. Tudo em `src/api/generated/` (client, tipos, schemas Zod e hooks do TanStack Query) é gerado desse arquivo pelo `@hey-api/openapi-ts`. Não edite esses arquivos.
+O contrato fica no submódulo `spec/` (repositório `journal-spec`), fixo numa tag de release. O `spec/openapi.yaml` é a fonte da verdade, e o `info.version` dele diz qual versão o app usa. Clone com `git clone --recurse-submodules`, ou rode `git submodule update --init` num clone existente.
 
-Para usar outra versão da API:
+Tudo em `src/api/generated/` (client, tipos, schemas Zod e hooks do TanStack Query) é gerado do contrato pelo `@hey-api/openapi-ts` e não vai para o Git. O `bun install` gera esses arquivos uma vez. Se um comando falhar por um import gerado ausente ou desatualizado, rode `bun run gen`.
+
+Para usar outra versão do contrato:
 
 ```bash
-bun run contract:pull v0.6.0
+git -C spec fetch --tags
+git -C spec checkout v0.5.0
+bun run gen
 ```
 
-O script baixa o contrato da tag no Gitea com o token de `API_CONTRACT_TOKEN` (um token read-only, no `.env`; veja `.env.example`), confere se o `info.version` bate com a tag e regenera o client. Depois, `bun run typecheck` mostra o que a mudança quebrou.
+Depois, `bun run typecheck` mostra o que a mudança quebrou. Para desenvolver contra uma mudança ainda não lançada, faça checkout de uma branch ou de um commit do `journal-spec`. O CI reprova esse contrato até sair a tag correspondente.
 
-Para desenvolver contra uma mudança ainda não lançada, passe uma branch ou um commit no lugar da tag. O CI reprova esse contrato até a API publicar a tag correspondente.
-
-As respostas da API são validadas em runtime com os schemas gerados. Uma resposta fora do contrato aparece como erro explícito ("The API answered in a format this app does not know"), não como tela quebrada.
+O app envia o header `Contract-Version` em toda requisição. Se a API recusar a versão do app, ele troca tudo por uma tela que pede para recarregar a página. As respostas da API são validadas em runtime com os schemas gerados. Uma resposta fora do contrato aparece como erro explícito ("The API answered in a format this app does not know"), não como tela quebrada.
 
 ## Scripts
 
-| Script                | O que faz                                                                               |
-| --------------------- | --------------------------------------------------------------------------------------- |
-| `dev`                 | Servidor de desenvolvimento com proxy de `/api`. Recarregue a página para ver mudanças. |
-| `build`               | Gera os arquivos estáticos de produção em `dist/public`.                                |
-| `start`               | Serve `dist/public` em modo produção, com CSP e headers de cache.                       |
-| `typecheck`           | Checa os tipos com o TypeScript 7.                                                      |
-| `lint`, `fmt`         | `oxlint` e `oxfmt`. `fmt:check` só verifica.                                            |
-| `gen`                 | Regenera `src/api/generated` a partir de `contract/openapi.json`.                       |
-| `contract:pull <ref>` | Baixa o contrato de uma tag, branch ou commit da API e regenera.                        |
-| `contract:check`      | Falha se `contract/openapi.json` diferir do contrato publicado na tag.                  |
+| Script               | O que faz                                                                               |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `dev`                | Servidor de desenvolvimento com proxy de `/api`. Recarregue a página para ver mudanças. |
+| `build`              | Gera os arquivos estáticos de produção em `dist/public`.                                |
+| `start`              | Serve `dist/public` em modo produção, com CSP e headers de cache.                       |
+| `typecheck`          | Checa os tipos com o TypeScript 7.                                                      |
+| `lint`, `fmt`        | `oxlint` e `oxfmt`. `fmt:check` só verifica.                                            |
+| `gen`                | Regenera `src/api/generated` a partir de `spec/openapi.yaml`.                           |
+| `check:contract-tag` | Falha se o commit do `spec/` não tiver a tag `v<info.version>`.                         |
 
 O `bun test` roda os testes. Os testes de UI usam happy-dom, Testing Library e MSW.
 
@@ -54,4 +55,4 @@ O `Dockerfile` gera a imagem com os arquivos estáticos e o `server.ts`, que esc
 
 ## CI
 
-O workflow do Gitea Actions roda typecheck, lint, formatação e testes, confere o contrato contra a tag publicada, confere se o client gerado está em dia e faz o build. Ele precisa do secret `API_CONTRACT_TOKEN`, um token pessoal read-only com acesso ao repositório `journal-api`. O token automático do Actions não serve, porque só enxerga o próprio repositório.
+O workflow do Gitea Actions faz checkout com o submódulo, confere a tag do `spec/` e roda typecheck, lint, formatação, testes e build. Ele precisa do secret `SPEC_TOKEN`, um token pessoal read-only com acesso ao repositório `journal-spec`. O token automático do Actions não serve, porque só enxerga o próprio repositório.

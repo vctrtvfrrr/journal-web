@@ -13,8 +13,8 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "gen": "bun --bun openapi-ts",
-    "contract:pull": "bun scripts/contract-pull.ts",
-    "contract:check": "bun scripts/contract-check.ts"
+    "postinstall": "bun run gen",
+    "check:contract-tag": "bun scripts/check-contract-tag.ts"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",

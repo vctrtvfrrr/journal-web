@@ -1,6 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import type {
+  ContractVersionProblem,
   Device,
   Note,
   Notebook,
@@ -9,11 +10,19 @@ import type {
   ValidationProblem,
 } from "../src/api/generated";
 
+// Like the API, reject any request without Contract-Version before every other handler.
+const requireContractVersion = http.all("/api/*", ({ request }) =>
+  request.headers.has("contract-version") ? undefined : contractVersionProblem("0.0.0"),
+);
+
 export const api = setupServer(
+  requireContractVersion,
   http.get("/api/tasks", () => HttpResponse.json([] satisfies Task[])),
   http.get("/api/notes", () => HttpResponse.json([] satisfies Note[])),
   http.get("/api/notebooks", () => HttpResponse.json([] satisfies Notebook[])),
 );
+const useHandlers = api.use.bind(api);
+api.use = (...handlers) => useHandlers(requireContractVersion, ...handlers);
 
 export const device: Device = {
   id: "0193b3a0-0000-7000-8000-000000000001",
@@ -28,6 +37,20 @@ export function problem(status: number, detail: string, headers?: HeadersInit) {
   return HttpResponse.json(body, {
     status,
     headers: { "content-type": "application/problem+json", ...headers },
+  });
+}
+
+export function contractVersionProblem(minimumVersion: string) {
+  const body: ContractVersionProblem = {
+    type: "tag:journal,2026:contract-version-unsupported",
+    title: "Bad Request",
+    status: 400,
+    detail: `Contract-Version is below the minimum supported version ${minimumVersion}.`,
+    minimum_version: minimumVersion,
+  };
+  return HttpResponse.json(body, {
+    status: 400,
+    headers: { "content-type": "application/problem+json" },
   });
 }
 

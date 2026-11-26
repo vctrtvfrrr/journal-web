@@ -1,5 +1,6 @@
 {
   "ignorePatterns": [
+    "spec/**",
     "src/api/generated/**",
     "src/components/ui/**",
     "src/lib/menu-styles.ts",
