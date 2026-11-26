@@ -175,3 +175,31 @@ test("switches the mobile view to the notes to show the saved note", async () =>
   await revealedNote("Opened from a link");
   expect(screen.getByRole("tab", { name: "Notes" }).getAttribute("aria-selected")).toBe("true");
 });
+
+test("keeps the search and does not scroll when the saved note does not match it", async () => {
+  serveNotes([aNote("1", "2026-11-20", "Painted the quarto")]);
+  const history = renderAppAt("/?q=quarto");
+
+  const panel = within(await screen.findByRole("tabpanel", { name: "Diary" }));
+  expect(await panel.findByText("Painted the quarto")).toBeDefined();
+  await userEvent.type(screen.getByLabelText("Quick note"), "Watered the fern");
+  await userEvent.keyboard("{Control>}{Enter}{/Control}");
+
+  await waitFor(() =>
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Quick note").value).toBe(""),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(scrolledTo.filter((row) => row.hasAttribute("data-note"))).toEqual([]);
+  expect(panel.queryByText("Watered the fern")).toBeNull();
+  expect(history.location.search).toBe("?q=quarto");
+});
+
+test("still scrolls to a saved note that matches the search", async () => {
+  serveNotes([aNote("1", "2026-11-20", "Painted the quarto")]);
+  renderAppAt("/?q=quarto");
+
+  await userEvent.type(await screen.findByLabelText("Quick note"), "Cleaned the quarto");
+  await userEvent.keyboard("{Control>}{Enter}{/Control}");
+
+  await revealedNote("Cleaned the quarto");
+});

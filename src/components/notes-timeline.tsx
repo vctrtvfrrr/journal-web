@@ -4,6 +4,7 @@ import type { Note } from "../api/generated";
 import { activationHandlers } from "../lib/activation";
 import { useTimeline } from "../lib/notes";
 import { useRevealNote } from "../lib/reveal-note";
+import { isFiltering, useTimelineFilters } from "../lib/timeline-filters";
 import {
   type Connector,
   flattenTimeline,
@@ -11,12 +12,14 @@ import {
   groupNotes,
   type TimelineRow,
 } from "../lib/timeline";
+import { isProblem } from "../lib/problem";
 import { cn } from "../lib/utils";
 import { LoadError } from "./load-error";
 import { Markdown } from "./markdown";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import { Spinner } from "./ui/spinner";
+import { TimelineFilterBar } from "./timeline-filter-bar";
 
 const laneLine = "absolute left-[calc(1ch-0.5px)] w-px bg-border-strong";
 const groupColor = { year: "text-yellow-ink", month: "text-cyan-ink", day: "text-blue-ink" };
@@ -151,16 +154,58 @@ function prefersReducedMotion() {
 
 const HIGHLIGHT_MS = 2000;
 
+type Timeline = ReturnType<typeof useTimeline>;
+
+function isRejectedSearch(timeline: Timeline, filtering: boolean) {
+  return (
+    filtering &&
+    timeline.isError &&
+    !timeline.isFetchNextPageError &&
+    isProblem(timeline.error) &&
+    timeline.error.status === 400
+  );
+}
+
 export function NotesTimeline({ notebook }: { notebook: string }) {
-  const timeline = useTimeline(notebook);
+  const [filters] = useTimelineFilters();
+  const filtering = isFiltering(filters);
+  const timeline = useTimeline(notebook, filters);
+  const rejected = isRejectedSearch(timeline, filtering);
+  const lastResults = useRef(timeline.data);
+  if (timeline.data) lastResults.current = timeline.data;
+
+  return (
+    <>
+      <TimelineFilterBar searchError={rejected ? timeline.error : undefined} />
+      <TimelineResults
+        notebook={notebook}
+        timeline={timeline}
+        data={rejected ? lastResults.current : timeline.data}
+        rejected={rejected}
+        filtering={filtering}
+      />
+    </>
+  );
+}
+
+function TimelineResults({
+  notebook,
+  timeline,
+  data,
+  rejected,
+  filtering,
+}: {
+  notebook: string;
+  timeline: Timeline;
+  data: Timeline["data"];
+  rejected: boolean;
+  filtering: boolean;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const [highlighted, setHighlighted] = useState<{ id: string }>();
   const { target, finishReveal } = useRevealNote();
   const revealing = target?.notebook_id === notebook ? target.id : undefined;
-  const notes = useMemo(
-    () => timeline.data?.pages.flatMap((page) => page.notes) ?? [],
-    [timeline.data],
-  );
+  const notes = useMemo(() => data?.pages.flatMap((page) => page.notes) ?? [], [data]);
   const rows = useMemo(
     () => flattenTimeline(groupNotes(notes), timeline.hasNextPage),
     [notes, timeline.hasNextPage],
@@ -205,12 +250,15 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
       </div>
     );
 
-  if (timeline.isError && !timeline.isFetchNextPageError)
+  if (timeline.isError && !timeline.isFetchNextPageError && !rejected)
     return (
       <div className="p-[1ch]">
         <LoadError error={timeline.error} onRetry={() => void timeline.refetch()} />
       </div>
     );
+
+  if (notes.length === 0 && filtering)
+    return <p className="p-[1ch] text-muted-foreground">No notes match these filters.</p>;
 
   if (notes.length === 0)
     return (
@@ -239,7 +287,9 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
             </Button>
           </>
         ) : (
-          <span>(root) beginning of notebook · {notes.length} notes</span>
+          <span>
+            (root) {filtering ? "end of results" : "beginning of notebook"} · {notes.length} notes
+          </span>
         )}
       </div>
     </div>

@@ -1,18 +1,24 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { listNotes } from "../api/generated";
 import { createNoteMutation, listNotesQueryKey } from "../api/generated/@tanstack/react-query.gen";
 import { nextCursor } from "./timeline";
+import type { TimelineFilters } from "./timeline-filters";
 
-export function timelineQueryKey(notebook: string) {
-  return listNotesQueryKey({ query: { notebook } });
+export function timelineQueryKey(notebook: string, filters: TimelineFilters = {}) {
+  return listNotesQueryKey({ query: { notebook, ...filters } });
 }
 
-export function useTimeline(notebook: string) {
+export function useTimeline(notebook: string, filters: TimelineFilters) {
   return useInfiniteQuery({
-    queryKey: timelineQueryKey(notebook),
+    queryKey: timelineQueryKey(notebook, filters),
     queryFn: async ({ pageParam, signal }) => {
       const { data, response } = await listNotes({
-        query: { notebook, cursor: pageParam },
+        query: { notebook, ...filters, cursor: pageParam },
         signal,
         throwOnError: true,
       });
@@ -20,6 +26,7 @@ export function useTimeline(notebook: string) {
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.next,
+    placeholderData: keepPreviousData,
     meta: { handledByRoute: true },
   });
 }

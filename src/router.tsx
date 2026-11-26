@@ -4,10 +4,14 @@ import {
   createRoute,
   createRouter,
   Outlet,
+  parseSearchWith,
   redirect,
+  retainSearchParams,
   type RouterHistory,
+  stringifySearchWith,
 } from "@tanstack/react-router";
 import { hasSession } from "./lib/session";
+import { FILTER_KEYS, validateTimelineFilters } from "./lib/timeline-filters";
 import { ErrorPage } from "./routes/error";
 import { HomePage } from "./routes/home";
 import { LoginPage } from "./routes/login";
@@ -33,6 +37,8 @@ const loginRoute = createRoute({
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "home",
+  validateSearch: validateTimelineFilters,
+  search: { middlewares: [retainSearchParams([...FILTER_KEYS])] },
   beforeLoad: async ({ context }) => {
     if (!(await hasSession(context.queryClient))) throw redirect({ to: "/login" });
   },
@@ -64,6 +70,8 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
     ]),
     context: { queryClient },
     history,
+    parseSearch: parseSearchWith((value) => value),
+    stringifySearch: stringifySearchWith(JSON.stringify),
   });
 }
 

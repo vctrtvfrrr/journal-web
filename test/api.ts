@@ -9,6 +9,7 @@ import type {
   Task,
   ValidationProblem,
 } from "../src/api/generated";
+import { periodEnd, periodStart } from "../src/lib/partial-date";
 
 // Like the API, reject any request without Contract-Version before every other handler.
 const requireContractVersion = http.all("/api/*", ({ request }) =>
@@ -88,9 +89,29 @@ export function aNote(id: string, date: string, content = `Note ${id}`, notebook
   };
 }
 
+const searchable = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+
+function matchesFilters(note: Note, search: URLSearchParams) {
+  const q = search.get("q")?.trim();
+  const from = search.get("from");
+  const to = search.get("to");
+  if (q && !searchable(note.content).includes(searchable(q))) return false;
+  if (from && periodEnd(note.date) < periodStart(from)) return false;
+  if (to && periodStart(note.date) > periodEnd(to)) return false;
+  return true;
+}
+
 export function notesPage(request: Request, notes: Note[], pageSize = 50) {
   const url = new URL(request.url);
-  const inNotebook = notes.filter((note) => note.notebook_id === url.searchParams.get("notebook"));
+  const inNotebook = notes.filter(
+    (note) =>
+      note.notebook_id === url.searchParams.get("notebook") &&
+      matchesFilters(note, url.searchParams),
+  );
   const start = Number(url.searchParams.get("cursor") ?? 0);
   const end = start + pageSize;
   const headers: HeadersInit =
