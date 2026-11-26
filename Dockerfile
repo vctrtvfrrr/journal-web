@@ -1,6 +1,7 @@
 FROM oven/bun:1.4.5 AS build
 WORKDIR /app
-COPY package.json bun.lock ./
+COPY package.json bun.lock openapi-ts.config.ts ./
+COPY spec/openapi.yaml ./spec/
 RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build

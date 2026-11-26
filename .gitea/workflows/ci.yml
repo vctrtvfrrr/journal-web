@@ -32,6 +32,9 @@ jobs:
   release:
     needs: check
     if: github.event_name == 'push'
+    outputs:
+      release: ${{ steps.release.outputs.release }}
+      version: ${{ steps.release.outputs.version }}
     concurrency:
       group: release
       cancel-in-progress: false
@@ -71,3 +74,37 @@ jobs:
               -H "Authorization: token $GITEA_TOKEN" \
               -H "Content-Type: application/json" \
               --data @-
+
+  deploy:
+    needs: release
+    if: needs.release.outputs.release == 'true'
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: git.codelab.tec.br
+      IMAGE: git.codelab.tec.br/vctrtvfrrr/journal-web
+      TAG: v${{ needs.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.SPEC_TOKEN }}
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ gitea.repository_owner }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Build and push image
+        run: |
+          docker build -t "$IMAGE:$TAG" -t "$IMAGE:latest" .
+          docker push "$IMAGE:$TAG"
+          docker push "$IMAGE:latest"
+
+      - uses: https://git.codelab.tec.br/codelab/deploy-stack@master
+        with:
+          app: journal-web
+          image-tag: ${{ env.TAG }}

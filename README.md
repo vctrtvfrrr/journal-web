@@ -54,6 +54,8 @@ O TypeScript aparece duas vezes nas dependências: o `typescript` (6) existe só
 
 O `Dockerfile` gera a imagem com os arquivos estáticos e o `server.ts`, que escuta na porta 4000. Atrás do Traefik, roteie `/api` para o container da API e o resto para este container. O servidor manda os headers `Content-Security-Policy`, `X-Content-Type-Options` e `Referrer-Policy`. Arquivos com hash no nome ficam em cache por um ano, e o resto é revalidado a cada acesso.
 
+O app roda em `https://journal.victor.etc.br` como a Application Stack `journal-web` da VPS CodeLab, implantada com o [`deploy-stack`](https://git.codelab.tec.br/codelab/deploy-stack). No mesmo host, o Traefik manda `/api` para a stack `journal-api` e o resto para este container. Toda Release que o CI publica também gera a imagem `git.codelab.tec.br/vctrtvfrrr/journal-web:vX.Y.Z`, envia a imagem ao registry e implanta o [`compose.yml`](compose.yml) com essa tag. O login no registry usa o secret de usuário `REGISTRY_TOKEN`. Para voltar a uma versão anterior, execute de novo o job `deploy` da Release antiga.
+
 ## CI
 
 O workflow do Gitea Actions roda em push e em pull request para a `master`. Ele faz checkout com o submódulo, confere a tag do `spec/` e roda typecheck, lint, formatação, testes e build. Ele precisa do secret `SPEC_TOKEN`, um token pessoal read-only com acesso ao repositório `journal-spec`. O token automático do Actions não serve, porque só enxerga o próprio repositório.

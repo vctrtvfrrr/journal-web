@@ -1,0 +1,35 @@
+services:
+  journal-web:
+    image: git.codelab.tec.br/vctrtvfrrr/journal-web:${IMAGE_TAG:-latest}
+    pull_policy: always
+    container_name: journal-web
+    restart: unless-stopped
+    networks: [web]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r = await fetch('http://127.0.0.1:4000/'); process.exit(r.ok ? 0 : 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.journal-web.loadbalancer.server.port=4000
+      - traefik.http.routers.journal-web.rule=Host(`journal.victor.etc.br`)
+      - traefik.http.routers.journal-web.entrypoints=websecure
+      - traefik.http.routers.journal-web.tls.certresolver=letsencrypt
+      - traefik.http.routers.journal-web.tls.domains[0].main=victor.etc.br
+      - traefik.http.routers.journal-web.tls.domains[0].sans=*.victor.etc.br
+      # security-headers@file would replace the app's stricter Referrer-Policy, so only HSTS is added here.
+      - traefik.http.routers.journal-web.middlewares=cf-only@file,journal-web-hsts
+      - traefik.http.middlewares.journal-web-hsts.headers.stsSeconds=31536000
+      - traefik.http.middlewares.journal-web-hsts.headers.stsIncludeSubdomains=true
+
+networks:
+  web:
+    external: true
