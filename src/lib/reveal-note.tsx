@@ -1,7 +1,7 @@
 import { createContext, type ReactNode, useContext, useRef, useState } from "react";
 import type { Note } from "../api/generated";
 
-type NoteToReveal = Pick<Note, "id" | "notebook_id">;
+type NoteToReveal = Pick<Note, "id" | "notebook_id" | "date">;
 
 const RevealNoteContext = createContext<{
   target: NoteToReveal | undefined;
@@ -13,7 +13,8 @@ export function RevealNoteProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<NoteToReveal>();
   const value = {
     target,
-    reveal: (note: NoteToReveal) => setTarget({ id: note.id, notebook_id: note.notebook_id }),
+    reveal: (note: NoteToReveal) =>
+      setTarget({ id: note.id, notebook_id: note.notebook_id, date: note.date }),
     finishReveal: () => setTarget(undefined),
   };
   return <RevealNoteContext.Provider value={value}>{children}</RevealNoteContext.Provider>;

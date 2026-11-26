@@ -1,10 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "../api/generated";
 import { activationHandlers } from "../lib/activation";
 import { useTimeline } from "../lib/notes";
 import { useRevealNote } from "../lib/reveal-note";
-import { isFiltering, useTimelineFilters } from "../lib/timeline-filters";
+import { isFiltering, useTimelineAnchor, useTimelineFilters } from "../lib/timeline-filters";
 import {
   type Connector,
   flattenTimeline,
@@ -12,6 +12,7 @@ import {
   groupNotes,
   type TimelineRow,
 } from "../lib/timeline";
+import { periodStart } from "../lib/partial-date";
 import { isProblem } from "../lib/problem";
 import { cn } from "../lib/utils";
 import { LoadError } from "./load-error";
@@ -129,7 +130,13 @@ function TimelineRowView({ row, highlighted }: { row: TimelineRow; highlighted: 
   );
 }
 
-function OlderNotesSentinel({ onVisible }: { onVisible: () => void }) {
+function PageSentinel({
+  onVisible,
+  onlyOnReturn = false,
+}: {
+  onVisible: () => void;
+  onlyOnReturn?: boolean;
+}) {
   const sentinel = useRef<HTMLDivElement>(null);
   const latest = useRef(onVisible);
   latest.current = onVisible;
@@ -137,8 +144,12 @@ function OlderNotesSentinel({ onVisible }: { onVisible: () => void }) {
   useEffect(() => {
     const element = sentinel.current;
     if (!element || typeof IntersectionObserver === "undefined") return;
+    let leftView = !onlyOnReturn;
     const observer = new IntersectionObserver(
-      ([entry]) => entry?.isIntersecting && latest.current(),
+      ([entry]) => {
+        if (!entry?.isIntersecting) leftView = true;
+        else if (leftView) latest.current();
+      },
       { rootMargin: "300px" },
     );
     observer.observe(element);
@@ -146,6 +157,46 @@ function OlderNotesSentinel({ onVisible }: { onVisible: () => void }) {
   }, []);
 
   return <div ref={sentinel} aria-hidden />;
+}
+
+function scrollParent(element: Element): Element {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    const { overflowY } = getComputedStyle(parent);
+    if (overflowY === "auto" || overflowY === "scroll") return parent;
+  }
+  return document.scrollingElement ?? document.documentElement;
+}
+
+function noteRow(container: HTMLElement | null, id: string) {
+  return container?.querySelector(`[data-note="${id}"]`);
+}
+
+// Chrome and Firefox keep the visible notes in place when a page lands above them (scroll
+// anchoring). Safari does not, so there the scroll moves by the height of the new page by hand.
+function useScrollKeptOnNewerPage(container: RefObject<HTMLElement | null>, newestId?: string) {
+  const kept = useRef<{ id: string; y: number; scroller: Element }>(undefined);
+  const contentY = (row: Element, scroller: Element) =>
+    row.getBoundingClientRect().top + scroller.scrollTop;
+
+  useLayoutEffect(() => {
+    const mark = kept.current;
+    kept.current = undefined;
+    const row = mark && noteRow(container.current, mark.id);
+    if (mark && row) mark.scroller.scrollTop += contentY(row, mark.scroller) - mark.y;
+  }, [newestId]);
+
+  return {
+    keep: () => {
+      if (!newestId || CSS.supports?.("overflow-anchor", "auto")) return;
+      const row = noteRow(container.current, newestId);
+      if (!row) return;
+      const scroller = scrollParent(row);
+      kept.current = { id: newestId, y: contentY(row, scroller), scroller };
+    },
+    forget: () => {
+      kept.current = undefined;
+    },
+  };
 }
 
 function prefersReducedMotion() {
@@ -156,20 +207,36 @@ const HIGHLIGHT_MS = 2000;
 
 type Timeline = ReturnType<typeof useTimeline>;
 
+function isPageLoadError(timeline: Timeline) {
+  return timeline.isFetchNextPageError || timeline.isFetchPreviousPageError;
+}
+
 function isRejectedSearch(timeline: Timeline, filtering: boolean) {
   return (
     filtering &&
     timeline.isError &&
-    !timeline.isFetchNextPageError &&
+    !isPageLoadError(timeline) &&
     isProblem(timeline.error) &&
     timeline.error.status === 400
   );
 }
 
+function isOutsideLoadedPages(date: string, notes: Note[], timeline: Timeline) {
+  const newest = notes[0];
+  const oldest = notes.at(-1);
+  if (!newest || !oldest) return false;
+  const start = periodStart(date);
+  return (
+    (timeline.hasNextPage && start < periodStart(oldest.date)) ||
+    (timeline.hasPreviousPage && start > periodStart(newest.date))
+  );
+}
+
 export function NotesTimeline({ notebook }: { notebook: string }) {
   const [filters] = useTimelineFilters();
+  const [anchor] = useTimelineAnchor();
   const filtering = isFiltering(filters);
-  const timeline = useTimeline(notebook, filters);
+  const timeline = useTimeline(notebook, filters, anchor);
   const rejected = isRejectedSearch(timeline, filtering);
   const lastResults = useRef(timeline.data);
   if (timeline.data) lastResults.current = timeline.data;
@@ -204,8 +271,10 @@ function TimelineResults({
   const container = useRef<HTMLDivElement>(null);
   const [highlighted, setHighlighted] = useState<{ id: string }>();
   const { target, finishReveal } = useRevealNote();
-  const revealing = target?.notebook_id === notebook ? target.id : undefined;
+  const [anchor, moveAnchor] = useTimelineAnchor();
+  const revealing = target?.notebook_id === notebook ? target : undefined;
   const notes = useMemo(() => data?.pages.flatMap((page) => page.notes) ?? [], [data]);
+  const scrollKeeper = useScrollKeptOnNewerPage(container, notes[0]?.id);
   const rows = useMemo(
     () => flattenTimeline(groupNotes(notes), timeline.hasNextPage),
     [notes, timeline.hasNextPage],
@@ -213,17 +282,32 @@ function TimelineResults({
 
   useEffect(() => {
     if (!revealing) return;
-    const note = notes.find(({ id }) => id === revealing);
+    const note = notes.find(({ id }) => id === revealing.id);
     if (note) {
       setHighlighted({ id: note.id });
       finishReveal();
     } else if (timeline.isFetchNextPageError) {
       finishReveal();
-    } else if (!timeline.isFetching) {
-      if (timeline.hasNextPage) void timeline.fetchNextPage();
+    } else if (!timeline.isFetching && !timeline.isPlaceholderData) {
+      const jump =
+        !filtering &&
+        revealing.date !== anchor &&
+        isOutsideLoadedPages(revealing.date, notes, timeline);
+      if (jump) moveAnchor(revealing.date);
+      else if (timeline.hasNextPage) void timeline.fetchNextPage();
       else finishReveal();
     }
-  }, [revealing, notes, timeline.isFetching, timeline.isFetchNextPageError, timeline.hasNextPage]);
+  }, [
+    revealing,
+    notes,
+    anchor,
+    filtering,
+    timeline.isFetching,
+    timeline.isPlaceholderData,
+    timeline.isFetchNextPageError,
+    timeline.hasNextPage,
+    timeline.hasPreviousPage,
+  ]);
 
   useEffect(() => {
     if (!highlighted) return;
@@ -235,6 +319,26 @@ function TimelineResults({
     const timer = setTimeout(() => setHighlighted(undefined), HIGHLIGHT_MS);
     return () => clearTimeout(timer);
   }, [highlighted]);
+
+  useEffect(() => {
+    const reachedNewest =
+      anchor && timeline.isSuccess && !timeline.isPlaceholderData && !timeline.hasPreviousPage;
+    if (reachedNewest) moveAnchor(undefined);
+  }, [anchor, timeline.isSuccess, timeline.isPlaceholderData, timeline.hasPreviousPage]);
+
+  const backToLatest = () => {
+    moveAnchor(undefined);
+    container.current?.scrollIntoView?.({ block: "start" });
+  };
+
+  const fetchNewer = () => {
+    scrollKeeper.keep();
+    void timeline.fetchPreviousPage().then((result) => result.isError && scrollKeeper.forget());
+  };
+
+  const loadNewer = () => {
+    if (!timeline.isFetchingPreviousPage && !timeline.isFetchPreviousPageError) fetchNewer();
+  };
 
   const loadOlder = () => {
     if (!timeline.isFetchingNextPage && !timeline.isFetchNextPageError)
@@ -250,7 +354,7 @@ function TimelineResults({
       </div>
     );
 
-  if (timeline.isError && !timeline.isFetchNextPageError && !rejected)
+  if (timeline.isError && !isPageLoadError(timeline) && !rejected)
     return (
       <div className="p-[1ch]">
         <LoadError error={timeline.error} onRetry={() => void timeline.refetch()} />
@@ -269,6 +373,32 @@ function TimelineResults({
 
   return (
     <div ref={container} className="min-w-0 py-2 text-sm">
+      {anchor && (
+        <div className="sticky top-0 z-10 flex min-h-6 items-center gap-[1ch] bg-background text-muted-foreground">
+          <span>jumped to {anchor}</span>
+          <Button type="button" variant="bracket" size="sm" onClick={backToLatest}>
+            back to latest
+          </Button>
+        </div>
+      )}
+      {timeline.hasPreviousPage && (
+        <div className="flex min-h-6 items-center gap-[1ch] text-muted-foreground">
+          {timeline.isFetchPreviousPageError ? (
+            <LoadError error={timeline.error} onRetry={fetchNewer} />
+          ) : timeline.isFetchingPreviousPage ? (
+            <>
+              <Spinner /> loading newer notes…
+            </>
+          ) : (
+            <>
+              <PageSentinel onVisible={loadNewer} onlyOnReturn />
+              <Button type="button" variant="bracket" size="sm" onClick={loadNewer}>
+                load newer
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       {rows.map((row) => (
         <TimelineRowView key={row.key} row={row} highlighted={row.key === highlighted?.id} />
       ))}
@@ -281,7 +411,7 @@ function TimelineResults({
           </>
         ) : timeline.hasNextPage ? (
           <>
-            <OlderNotesSentinel onVisible={loadOlder} />
+            <PageSentinel onVisible={loadOlder} />
             <Button type="button" variant="bracket" size="sm" onClick={loadOlder}>
               load older
             </Button>

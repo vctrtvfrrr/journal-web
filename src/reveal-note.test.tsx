@@ -99,10 +99,15 @@ test("follows an edited note into its new notebook", async () => {
   expect(screen.getByRole("tab", { name: "Plants" }).getAttribute("aria-selected")).toBe("true");
 });
 
-test("loads older pages until the saved note shows up", async () => {
-  const old = aNote("3", "2024-01-01", "Old note");
+test("loads the pages of the note's period until the saved note shows up", async () => {
+  const old = aNote("4", "2024", "Old note");
   const cursors = serveNotes(
-    [aNote("1", "2026-11-20", "Newest"), aNote("2", "2025-06-01", "Middle"), old],
+    [
+      aNote("1", "2026-11-20", "Newest"),
+      aNote("2", "2024-12-05", "December"),
+      aNote("3", "2024-11-05", "November"),
+      old,
+    ],
     1,
   );
   renderAppAt(`/notes/${old.id}`);
@@ -112,7 +117,7 @@ test("loads older pages until the saved note shows up", async () => {
   await userEvent.click(dialog.getByRole("button", { name: "save" }));
 
   await revealedNote("Old note edited");
-  expect(cursors.filter(Boolean)).toContain("2");
+  expect(cursors.filter(Boolean)).toEqual(["2", "3"]);
 });
 
 test("does not scroll when the edit is cancelled", async () => {
@@ -141,8 +146,8 @@ test("scrolls to a note added from the new note dialog", async () => {
 });
 
 test("stops looking for the note when an older page fails", async () => {
-  const old = aNote("2", "2024-01-01", "Old note");
-  serveNotes([aNote("1", "2026-11-20", "Newest"), old], 1);
+  const old = aNote("3", "2024", "Old note");
+  serveNotes([aNote("1", "2026-11-20", "Newest"), aNote("2", "2024-12-05", "December"), old], 1);
   let olderPageRequests = 0;
   renderAppAt(`/notes/${old.id}`);
 

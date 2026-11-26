@@ -11,7 +11,7 @@ import {
   stringifySearchWith,
 } from "@tanstack/react-router";
 import { hasSession } from "./lib/session";
-import { FILTER_KEYS, validateTimelineFilters } from "./lib/timeline-filters";
+import { TIMELINE_SEARCH_KEYS, validateTimelineSearch } from "./lib/timeline-filters";
 import { ErrorPage } from "./routes/error";
 import { HomePage } from "./routes/home";
 import { LoginPage } from "./routes/login";
@@ -37,8 +37,8 @@ const loginRoute = createRoute({
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "home",
-  validateSearch: validateTimelineFilters,
-  search: { middlewares: [retainSearchParams([...FILTER_KEYS])] },
+  validateSearch: validateTimelineSearch,
+  search: { middlewares: [retainSearchParams([...TIMELINE_SEARCH_KEYS])] },
   beforeLoad: async ({ context }) => {
     if (!(await hasSession(context.queryClient))) throw redirect({ to: "/login" });
   },

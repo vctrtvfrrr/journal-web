@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNotebooks } from "../lib/notebooks";
 import { useRevealNote } from "../lib/reveal-note";
 import { useStoredState } from "../lib/stored-state";
+import { useTimelineAnchor } from "../lib/timeline-filters";
 import { LoadError } from "./load-error";
 import { Skeleton } from "./ui/skeleton";
 import { NewNoteDialog } from "./new-note-dialog";
@@ -17,6 +18,11 @@ export function NotesPanel() {
   useEffect(() => {
     if (revealedNotebook) setStoredId(revealedNotebook);
   }, [revealedNotebook]);
+  const [, moveAnchor] = useTimelineAnchor();
+  const switchNotebook = (id: string) => {
+    moveAnchor(undefined);
+    setStoredId(id);
+  };
   const selected = notebooks.data?.find(({ id }) => id === storedId) ?? notebooks.data?.[0];
 
   return (
@@ -33,7 +39,7 @@ export function NotesPanel() {
       )}
       {selected && <QuickNoteForm notebookId={selected.id} />}
       {notebooks.data && (
-        <Tabs value={selected?.id ?? ""} onValueChange={setStoredId} className="gap-0">
+        <Tabs value={selected?.id ?? ""} onValueChange={switchNotebook} className="gap-0">
           <div className="flex min-w-0 items-end shadow-[inset_0_-1px_0_0_var(--border-strong)]">
             {selected ? (
               <TabsList aria-label="Notebooks" className="w-auto min-w-0 shadow-none">

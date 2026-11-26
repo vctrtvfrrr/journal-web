@@ -4,7 +4,7 @@ import {
   flattenTimeline,
   formatTime,
   groupNotes,
-  nextCursor,
+  linkCursor,
   parsePartialDate,
   type TimelineNode,
   type TimelineRow,
@@ -144,9 +144,10 @@ test("closes a finished subtree even when older pages remain", () => {
   ]);
 });
 
-test("reads the next page cursor from the Link header", () => {
-  expect(nextCursor('</api/notes?notebook=n1&cursor=WyIy%3D>; rel="next"')).toBe("WyIy=");
-  expect(nextCursor('</a?cursor=x>; rel="prev", </a?cursor=y>; rel="next"')).toBe("y");
-  expect(nextCursor('</a?cursor=x>; rel="prev"')).toBeUndefined();
-  expect(nextCursor(null)).toBeUndefined();
+test("reads the next and previous page cursors from the Link header", () => {
+  expect(linkCursor('</api/notes?notebook=n1&cursor=WyIy%3D>; rel="next"', "next")).toBe("WyIy=");
+  expect(linkCursor('</a?cursor=x>; rel="prev", </a?cursor=y>; rel="next"', "next")).toBe("y");
+  expect(linkCursor('</a?cursor=x>; rel="prev", </a?cursor=y>; rel="next"', "prev")).toBe("x");
+  expect(linkCursor('</a?cursor=x>; rel="prev"', "next")).toBeUndefined();
+  expect(linkCursor(null, "prev")).toBeUndefined();
 });

@@ -103,9 +103,9 @@ export function flattenTimeline(groups: TimelineGroup[], hasMore: boolean): Time
   return rows.reverse();
 }
 
-export function nextCursor(link: string | null): string | undefined {
-  const next = link?.split(",").find((entry) => /;\s*rel="?next"?/.test(entry));
-  const target = next?.match(/<([^>]*)>/)?.[1];
+export function linkCursor(link: string | null, rel: "next" | "prev"): string | undefined {
+  const entry = link?.split(",").find((each) => new RegExp(`;\\s*rel="?${rel}"?`).test(each));
+  const target = entry?.match(/<([^>]*)>/)?.[1];
   if (!target) return undefined;
   return new URL(target, "http://link.invalid").searchParams.get("cursor") ?? undefined;
 }

@@ -98,23 +98,38 @@ const searchable = (text: string) =>
 function matchesFilters(note: Note, search: URLSearchParams) {
   const q = search.get("q")?.trim();
   const from = search.get("from");
-  const to = search.get("to");
   if (q && !searchable(note.content).includes(searchable(q))) return false;
   if (from && periodEnd(note.date) < periodStart(from)) return false;
-  if (to && periodStart(note.date) > periodEnd(to)) return false;
   return true;
+}
+
+// Like the API, `to` only sets where the first page starts; cursors page both ways from there.
+function pageBounds(search: URLSearchParams, matching: Note[], pageSize: number) {
+  const cursor = search.get("cursor");
+  if (cursor?.startsWith("p")) {
+    const end = Number(cursor.slice(1));
+    return { start: Math.max(0, end - pageSize), end };
+  }
+  const to = search.get("to");
+  const firstInRange = to
+    ? matching.findIndex((note) => periodStart(note.date) <= periodEnd(to))
+    : 0;
+  const start = cursor ? Number(cursor) : firstInRange === -1 ? matching.length : firstInRange;
+  return { start, end: start + pageSize };
 }
 
 export function notesPage(request: Request, notes: Note[], pageSize = 50) {
   const url = new URL(request.url);
-  const inNotebook = notes.filter(
+  const matching = notes.filter(
     (note) =>
       note.notebook_id === url.searchParams.get("notebook") &&
       matchesFilters(note, url.searchParams),
   );
-  const start = Number(url.searchParams.get("cursor") ?? 0);
-  const end = start + pageSize;
-  const headers: HeadersInit =
-    end < inNotebook.length ? { Link: `</api/notes?cursor=${end}>; rel="next"` } : {};
-  return HttpResponse.json(inNotebook.slice(start, end), { headers });
+  const { start, end } = pageBounds(url.searchParams, matching, pageSize);
+  const links = [
+    end < matching.length && `</api/notes?cursor=${end}>; rel="next"`,
+    start > 0 && `</api/notes?cursor=p${start}>; rel="prev"`,
+  ].filter(Boolean);
+  const headers: HeadersInit = links.length > 0 ? { Link: links.join(", ") } : {};
+  return HttpResponse.json(matching.slice(start, end), { headers });
 }
