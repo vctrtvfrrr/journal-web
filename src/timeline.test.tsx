@@ -39,11 +39,11 @@ test("shows the notebook notes grouped by year, month and day with their times",
   renderAppAt("/");
 
   const panel = await timeline();
-  expect(await panel.findByRole("button", { name: "(2026)" })).toBeDefined();
-  expect(panel.getByRole("button", { name: "(2026-11)" })).toBeDefined();
-  expect(panel.getByRole("button", { name: "(2026-11-24)" })).toBeDefined();
-  expect(panel.getByRole("button", { name: "15:35" })).toBeDefined();
-  expect(panel.getByRole("button", { name: "09:--" })).toBeDefined();
+  expect(await panel.findByText("(2026)")).toBeDefined();
+  expect(panel.getByText("(2026-11)")).toBeDefined();
+  expect(panel.getByText("(2026-11-24)")).toBeDefined();
+  expect(panel.getByText("15:35")).toBeDefined();
+  expect(panel.getByText("09:--")).toBeDefined();
   expect(panel.getByText("Ana").tagName).toBe("STRONG");
   expect(panel.getByText("Month note")).toBeDefined();
   expect(panel.getByText("(root) beginning of notebook · 3 notes")).toBeDefined();
@@ -86,7 +86,7 @@ test("says when the notebook has no notes yet", async () => {
   ).toBeDefined();
 });
 
-test("collapses a group into its note count and a time into its first line", async () => {
+test("shows the whole body of a timed note under its time", async () => {
   serveTimeline([
     aNote("1", "2026-11-24T15:35", "First line\n\nSecond paragraph"),
     aNote("2", "2026-11-23", "Yesterday"),
@@ -94,15 +94,10 @@ test("collapses a group into its note count and a time into its first line", asy
   renderAppAt("/");
 
   const panel = await timeline();
-  await userEvent.click(await panel.findByRole("button", { name: "15:35" }));
-  expect(panel.getByRole("button", { name: "15:35" }).getAttribute("aria-expanded")).toBe("false");
-  expect(panel.getByText("First line")).toBeDefined();
-  expect(panel.queryByText("Second paragraph")).toBeNull();
-
-  await userEvent.click(panel.getByRole("button", { name: "(2026-11)" }));
-  expect(panel.getByText("2 notes")).toBeDefined();
-  expect(panel.queryByText("Yesterday")).toBeNull();
-  expect(panel.queryByRole("button", { name: "(2026-11-24)" })).toBeNull();
+  expect(await panel.findByText("Second paragraph")).toBeDefined();
+  expect(panel.getByText("Yesterday")).toBeDefined();
+  expect(panel.queryByRole("button", { name: "(2026-11)" })).toBeNull();
+  expect(panel.queryByRole("button", { name: "15:35" })).toBeNull();
 });
 
 test("shows a failed timeline load with a retry", async () => {

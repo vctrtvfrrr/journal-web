@@ -1,17 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "../api/generated";
 import { activationHandlers } from "../lib/activation";
 import { useTimeline } from "../lib/notes";
 import { useRevealNote } from "../lib/reveal-note";
 import {
   type Connector,
-  countNotes,
   flattenTimeline,
   formatTime,
-  groupKeys,
   groupNotes,
-  parsePartialDate,
   type TimelineRow,
 } from "../lib/timeline";
 import { cn } from "../lib/utils";
@@ -38,8 +35,8 @@ function Lane({ connector }: { connector: Connector }) {
   );
 }
 
-function NodeMark({ row, collapsed }: { row: TimelineRow; collapsed: boolean }) {
-  const glyph = row.kind === "group" ? (collapsed ? "◉" : "●") : row.date.hour ? "*" : "○";
+function NodeMark({ row }: { row: TimelineRow }) {
+  const glyph = row.kind === "group" ? "●" : row.date.hour ? "*" : "○";
   return (
     <span aria-hidden className="relative w-[2ch] shrink-0 self-stretch">
       <span
@@ -50,31 +47,8 @@ function NodeMark({ row, collapsed }: { row: TimelineRow; collapsed: boolean }) 
       >
         {glyph}
       </span>
-      {row.childLine && <span className={cn(laneLine, "top-[1.1rem] bottom-0")} />}
+      {row.kind === "group" && <span className={cn(laneLine, "top-[1.1rem] bottom-0")} />}
     </span>
-  );
-}
-
-function Toggle({
-  expanded,
-  onToggle,
-  className,
-  children,
-}: {
-  expanded: boolean;
-  onToggle: () => void;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-expanded={expanded}
-      onClick={onToggle}
-      className={cn("shrink-0 leading-6 hover:underline", className)}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -121,21 +95,7 @@ function NoteBody({ note }: { note: Note }) {
   );
 }
 
-function firstLine(content: string) {
-  return content.split("\n").find((text) => text.trim() && !text.startsWith("```")) ?? "";
-}
-
-function TimelineRowView({
-  row,
-  collapsed,
-  highlighted,
-  onToggle,
-}: {
-  row: TimelineRow;
-  collapsed: boolean;
-  highlighted: boolean;
-  onToggle: () => void;
-}) {
+function TimelineRowView({ row, highlighted }: { row: TimelineRow; highlighted: boolean }) {
   const time = row.kind === "note" ? formatTime(row.date) : null;
 
   return (
@@ -147,30 +107,14 @@ function TimelineRowView({
       {row.lanes.map((connector, lane) => (
         <Lane key={lane} connector={connector} />
       ))}
-      <NodeMark row={row} collapsed={collapsed} />
+      <NodeMark row={row} />
       <div className="min-w-0 flex-1">
         {row.kind === "group" ? (
-          <div className="flex min-w-0 gap-[1ch]">
-            <Toggle expanded={!collapsed} onToggle={onToggle} className={groupColor[row.level]}>
-              ({row.key})
-            </Toggle>
-            {collapsed && (
-              <span className="leading-6 text-muted-foreground">{countNotes(row)} notes</span>
-            )}
-          </div>
+          <span className={cn("leading-6", groupColor[row.level])}>({row.key})</span>
         ) : time ? (
           <>
-            <div className="flex min-w-0 gap-[1ch]">
-              <Toggle expanded={!collapsed} onToggle={onToggle} className="text-muted-foreground">
-                {time}
-              </Toggle>
-              {collapsed && (
-                <span className="min-w-0 truncate leading-6 text-muted-foreground">
-                  <Markdown level="inline">{firstLine(row.note.content)}</Markdown>
-                </span>
-              )}
-            </div>
-            {!collapsed && <NoteBody note={row.note} />}
+            <div className="leading-6 text-muted-foreground">{time}</div>
+            <NoteBody note={row.note} />
           </>
         ) : (
           <div className="pt-[calc((1.5rem-1lh)/2)]">
@@ -210,7 +154,6 @@ const HIGHLIGHT_MS = 2000;
 export function NotesTimeline({ notebook }: { notebook: string }) {
   const timeline = useTimeline(notebook);
   const container = useRef<HTMLDivElement>(null);
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const [highlighted, setHighlighted] = useState<{ id: string }>();
   const { target, finishReveal } = useRevealNote();
   const revealing = target?.notebook_id === notebook ? target.id : undefined;
@@ -219,19 +162,14 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
     [timeline.data],
   );
   const rows = useMemo(
-    () => flattenTimeline(groupNotes(notes), timeline.hasNextPage, collapsed),
-    [notes, timeline.hasNextPage, collapsed],
+    () => flattenTimeline(groupNotes(notes), timeline.hasNextPage),
+    [notes, timeline.hasNextPage],
   );
 
   useEffect(() => {
     if (!revealing) return;
     const note = notes.find(({ id }) => id === revealing);
     if (note) {
-      setCollapsed((previous) => {
-        const next = new Set(previous);
-        for (const key of [...groupKeys(parsePartialDate(note.date)), note.id]) next.delete(key);
-        return next;
-      });
       setHighlighted({ id: note.id });
       finishReveal();
     } else if (timeline.isFetchNextPageError) {
@@ -253,12 +191,6 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
     return () => clearTimeout(timer);
   }, [highlighted]);
 
-  const toggle = (key: string) =>
-    setCollapsed((previous) => {
-      const next = new Set(previous);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
   const loadOlder = () => {
     if (!timeline.isFetchingNextPage && !timeline.isFetchNextPageError)
       void timeline.fetchNextPage();
@@ -290,13 +222,7 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
   return (
     <div ref={container} className="min-w-0 py-2 text-sm">
       {rows.map((row) => (
-        <TimelineRowView
-          key={row.key}
-          row={row}
-          collapsed={collapsed.has(row.key)}
-          highlighted={row.key === highlighted?.id}
-          onToggle={() => toggle(row.key)}
-        />
+        <TimelineRowView key={row.key} row={row} highlighted={row.key === highlighted?.id} />
       ))}
       <div className="flex min-h-6 items-center gap-[1ch] text-muted-foreground">
         {timeline.isFetchNextPageError ? (

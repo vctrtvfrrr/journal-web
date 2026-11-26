@@ -85,21 +85,6 @@ test("scrolls to a quick note and highlights it after saving", async () => {
   expect(row.closest("[role=tabpanel]")).not.toBeNull();
 });
 
-test("opens the collapsed groups that hold the saved note", async () => {
-  serveNotes([aNote("1", "2026-11-20", "Older")]);
-  renderAppAt("/");
-
-  const panel = within(await screen.findByRole("tabpanel", { name: "Diary" }));
-  await userEvent.click(await panel.findByRole("button", { name: "(2026-11)" }));
-  await userEvent.type(screen.getByLabelText("Quick note"), "Inside a collapsed month");
-  await userEvent.keyboard("{Control>}{Enter}{/Control}");
-
-  await revealedNote("Inside a collapsed month");
-  expect(panel.getByRole("button", { name: "(2026-11)" }).getAttribute("aria-expanded")).toBe(
-    "true",
-  );
-});
-
 test("follows an edited note into its new notebook", async () => {
   const note = aNote("1", "2026-11-20T08:00", "Moved note");
   serveNotes([note]);

@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
 import { aNote } from "../../test/api";
 import {
-  countNotes,
   flattenTimeline,
   formatTime,
   groupNotes,
@@ -95,12 +94,6 @@ test("groups no notes into nothing", () => {
   expect(groupNotes([])).toEqual([]);
 });
 
-test("counts the notes of a group including its subgroups", () => {
-  const [year2026, year2025] = groupNotes(apiOrder);
-  expect(countNotes(year2026!)).toBe(7);
-  expect(countNotes(year2025!)).toBe(1);
-});
-
 const glyphs = { pipe: "│ ", tee: "├─", elbow: "└─", blank: "  " };
 
 function draw(rows: TimelineRow[]) {
@@ -112,7 +105,7 @@ function draw(rows: TimelineRow[]) {
 }
 
 test("draws the graph lanes for each row", () => {
-  expect(draw(flattenTimeline(groupNotes(apiOrder), false, new Set()))).toEqual([
+  expect(draw(flattenTimeline(groupNotes(apiOrder), false))).toEqual([
     "2026",
     "├─2026-08",
     "│ ├─2026-08-04",
@@ -133,33 +126,16 @@ test("draws the graph lanes for each row", () => {
 });
 
 test("keeps the last lanes open while older pages remain", () => {
-  expect(draw(flattenTimeline(groupNotes(apiOrder), true, new Set())).slice(-3)).toEqual([
+  expect(draw(flattenTimeline(groupNotes(apiOrder), true)).slice(-3)).toEqual([
     "├─2025-12",
     "│ ├─2025-12-31",
     "│ │ ├─h",
   ]);
 });
 
-test("hides the rows inside a collapsed group", () => {
-  const rows = flattenTimeline(groupNotes(apiOrder), false, new Set(["2026-05"]));
-  expect(draw(rows).slice(5, 7)).toEqual(["├─2026-05", "└─g"]);
-});
-
-test("draws a line below a group only while its children show", () => {
-  const rows = flattenTimeline(groupNotes(apiOrder), true, new Set(["2026-05"]));
-  expect(rows.filter((row) => row.childLine).map((row) => row.key)).toEqual([
-    "2026",
-    "2026-08",
-    "2026-08-04",
-    "2025",
-    "2025-12",
-    "2025-12-31",
-  ]);
-});
-
 test("closes a finished subtree even when older pages remain", () => {
   const notes = [aNote("1", "2026-11-24T10", "a"), aNote("2", "2026", "g")];
-  expect(draw(flattenTimeline(groupNotes(notes), true, new Set()))).toEqual([
+  expect(draw(flattenTimeline(groupNotes(notes), true))).toEqual([
     "2026",
     "├─2026-11",
     "│ └─2026-11-24",
