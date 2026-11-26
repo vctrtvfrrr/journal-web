@@ -1,4 +1,13 @@
-import { Braces, File, FileCode, FileImage, FileLock, FileText, Folder, FolderOpen } from "lucide-react";
+import {
+  Braces,
+  File,
+  FileCode,
+  FileImage,
+  FileLock,
+  FileText,
+  Folder,
+  FolderOpen,
+} from "lucide-react";
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
@@ -17,28 +26,58 @@ type FileTreeProps = Omit<React.ComponentProps<"div">, "onSelect"> & {
   showSummary?: boolean;
 };
 
-type VisibleRow = { path: string; node: FileTreeNode; level: number; guides: string; parent: string | null };
+type VisibleRow = {
+  path: string;
+  node: FileTreeNode;
+  level: number;
+  guides: string;
+  parent: string | null;
+};
 
 const isDir = (node: FileTreeNode) => node.children !== undefined;
 
 function fileIcon(node: FileTreeNode, open: boolean) {
-  if (isDir(node)) return open ? <FolderOpen className="text-blue-ink" /> : <Folder className="text-blue-ink" />;
+  if (isDir(node))
+    return open ? <FolderOpen className="text-blue-ink" /> : <Folder className="text-blue-ink" />;
   const ext = node.name.split(".").pop()?.toLowerCase();
-  if (["ts", "tsx", "js", "jsx", "css", "html", "sh"].includes(ext ?? "")) return <FileCode className="text-yellow-ink" />;
-  if (["json", "toml", "yaml", "yml"].includes(ext ?? "")) return <Braces className="text-magenta-ink" />;
+  if (["ts", "tsx", "js", "jsx", "css", "html", "sh"].includes(ext ?? ""))
+    return <FileCode className="text-yellow-ink" />;
+  if (["json", "toml", "yaml", "yml"].includes(ext ?? ""))
+    return <Braces className="text-magenta-ink" />;
   if (["md", "mdx", "txt"].includes(ext ?? "")) return <FileText className="text-cyan-ink" />;
-  if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext ?? "")) return <FileImage className="text-green-ink" />;
+  if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext ?? ""))
+    return <FileImage className="text-green-ink" />;
   if (ext === "lock" || ext === "lockb") return <FileLock className="text-muted-foreground" />;
   return <File className="text-muted-foreground" />;
 }
 
-function flatten(nodes: FileTreeNode[], expanded: Set<string>, parent: string | null = null, prefix = "", level = 1): VisibleRow[] {
+function flatten(
+  nodes: FileTreeNode[],
+  expanded: Set<string>,
+  parent: string | null = null,
+  prefix = "",
+  level = 1,
+): VisibleRow[] {
   return nodes.flatMap((node, index) => {
     const last = index === nodes.length - 1;
     const path = parent ? `${parent}/${node.name}` : node.name;
-    const row: VisibleRow = { path, node, level, guides: `${prefix}${last ? "└── " : "├── "}`, parent };
+    const row: VisibleRow = {
+      path,
+      node,
+      level,
+      guides: `${prefix}${last ? "└── " : "├── "}`,
+      parent,
+    };
     const open = isDir(node) && expanded.has(path);
-    const children = open ? flatten(node.children ?? [], expanded, path, `${prefix}${last ? "    " : "│   "}`, level + 1) : [];
+    const children = open
+      ? flatten(
+          node.children ?? [],
+          expanded,
+          path,
+          `${prefix}${last ? "    " : "│   "}`,
+          level + 1,
+        )
+      : [];
     return [row, ...children];
   });
 }
@@ -54,7 +93,16 @@ function countNodes(nodes: FileTreeNode[]): { dirs: number; files: number } {
   );
 }
 
-function FileTree({ data, rootLabel = ".", defaultExpanded = [], selected: selectedProp, onSelect, showSummary = true, className, ...props }: FileTreeProps) {
+function FileTree({
+  data,
+  rootLabel = ".",
+  defaultExpanded = [],
+  selected: selectedProp,
+  onSelect,
+  showSummary = true,
+  className,
+  ...props
+}: FileTreeProps) {
   const id = React.useId();
   const [expanded, setExpanded] = React.useState(() => new Set(defaultExpanded));
   const [internalSelected, setInternalSelected] = React.useState<string>();
@@ -63,7 +111,10 @@ function FileTree({ data, rootLabel = ".", defaultExpanded = [], selected: selec
 
   const rows = React.useMemo(() => flatten(data, expanded), [data, expanded]);
   const summary = React.useMemo(() => countNodes(data), [data]);
-  const focusIndex = Math.max(0, rows.findIndex((r) => r.path === focused));
+  const focusIndex = Math.max(
+    0,
+    rows.findIndex((r) => r.path === focused),
+  );
   const rowId = (path: string) => `${id}-${path.replace(/[^\w-]/g, "_")}`;
 
   const toggle = (path: string, open?: boolean) =>
@@ -153,7 +204,11 @@ function FileTree({ data, rootLabel = ".", defaultExpanded = [], selected: selec
                 {row.node.name}
                 {isDir(row.node) && "/"}
               </span>
-              {row.node.meta && <span className="ml-auto pl-[2ch] text-xs text-muted-foreground">{row.node.meta}</span>}
+              {row.node.meta && (
+                <span className="ml-auto pl-[2ch] text-xs text-muted-foreground">
+                  {row.node.meta}
+                </span>
+              )}
             </div>
           );
         })}

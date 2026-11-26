@@ -55,7 +55,16 @@ function useCellCount(ref: React.RefObject<HTMLElement | null>, fixed?: number) 
   return cells;
 }
 
-function Progress({ className, value = 0, max = 100, glyphs = "block", tone = "accent", showValue = true, cells: fixedCells, ...props }: ProgressProps) {
+function Progress({
+  className,
+  value = 0,
+  max = 100,
+  glyphs = "block",
+  tone = "accent",
+  showValue = true,
+  cells: fixedCells,
+  ...props
+}: ProgressProps) {
   const trackRef = React.useRef<HTMLSpanElement>(null);
   const g = GLYPHS[glyphs];
   const total = useCellCount(trackRef, fixedCells) - g.open.length - g.close.length;
@@ -76,11 +85,17 @@ function Progress({ className, value = 0, max = 100, glyphs = "block", tone = "a
     >
       <span ref={trackRef} className="relative w-0 min-w-0 flex-1 overflow-hidden leading-none">
         <span className="text-muted-foreground">{g.open}</span>
-        <span className={TONES[tone]}>{indeterminate ? "" : g.fill.repeat(Math.max(0, filled - head.length)) + head}</span>
+        <span className={TONES[tone]}>
+          {indeterminate ? "" : g.fill.repeat(Math.max(0, filled - head.length)) + head}
+        </span>
         <span className="text-border-strong">{g.empty.repeat(Math.max(0, total - filled))}</span>
         <span className="text-muted-foreground">{g.close}</span>
       </span>
-      {showValue && <span className="w-[4ch] shrink-0 text-right text-muted-foreground tabular-nums">{indeterminate ? "--" : `${Math.round(ratio * 100)}%`}</span>}
+      {showValue && (
+        <span className="w-[4ch] shrink-0 text-right text-muted-foreground tabular-nums">
+          {indeterminate ? "--" : `${Math.round(ratio * 100)}%`}
+        </span>
+      )}
     </div>
   );
 }

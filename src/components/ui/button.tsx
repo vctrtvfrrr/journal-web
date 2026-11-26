@@ -12,7 +12,8 @@ const buttonVariants = cva(
           "border-accent bg-accent text-accent-foreground shadow-tui-sm hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
         secondary:
           "border-border-strong bg-surface-2 text-foreground shadow-tui-sm hover:border-foreground/50 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
-        outline: "border-border-strong bg-transparent text-foreground hover:border-accent hover:text-accent-ink",
+        outline:
+          "border-border-strong bg-transparent text-foreground hover:border-accent hover:text-accent-ink",
         ghost: "border-transparent bg-transparent text-foreground hover:bg-surface-2",
         destructive:
           "border-red bg-red text-background shadow-tui-sm hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
@@ -32,7 +33,8 @@ const buttonVariants = cva(
   },
 );
 
-type ButtonProps = React.ComponentProps<"button"> & VariantProps<typeof buttonVariants> & { asChild?: boolean };
+type ButtonProps = React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & { asChild?: boolean };
 
 function Button({ className, variant, size, asChild = false, ...props }: ButtonProps) {
   const Comp = asChild ? Slot.Root : "button";

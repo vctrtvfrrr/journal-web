@@ -1,6 +1,13 @@
 import { Check } from "lucide-react";
 import * as React from "react";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./command";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "./command";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { cn } from "../../lib/utils";
 
@@ -43,13 +50,19 @@ function Combobox({
             className,
           )}
         >
-          <span className={cn("truncate", !selected && "text-muted-foreground/70")}>{selected?.label ?? placeholder}</span>
+          <span className={cn("truncate", !selected && "text-muted-foreground/70")}>
+            {selected?.label ?? placeholder}
+          </span>
           <span aria-hidden className="text-xs text-muted-foreground">
             [▾]
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={2} className="w-(--radix-popover-trigger-width) min-w-56 p-0 py-0 shadow-tui">
+      <PopoverContent
+        align="start"
+        sideOffset={2}
+        className="w-(--radix-popover-trigger-width) min-w-56 p-0 py-0 shadow-tui"
+      >
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
@@ -66,7 +79,11 @@ function Combobox({
                 >
                   <Check className={cn(option.value === value ? "opacity-100" : "opacity-0")} />
                   <span className="truncate">{option.label}</span>
-                  {option.hint && <span className="ml-auto text-xs text-muted-foreground group-data-[selected=true]/item:text-accent-foreground/70">{option.hint}</span>}
+                  {option.hint && (
+                    <span className="ml-auto text-xs text-muted-foreground group-data-[selected=true]/item:text-accent-foreground/70">
+                      {option.hint}
+                    </span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

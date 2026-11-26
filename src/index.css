@@ -169,7 +169,9 @@
     font-size: var(--text-base);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    font-feature-settings: "calt" 1, "zero" 1;
+    font-feature-settings:
+      "calt" 1,
+      "zero" 1;
   }
 
   ::selection {
@@ -284,7 +286,10 @@
 
 @utility dither {
   background-color: var(--overlay);
-  background-image: radial-gradient(color-mix(in oklab, var(--foreground) 35%, transparent) 0.6px, transparent 0.8px);
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--foreground) 35%, transparent) 0.6px,
+    transparent 0.8px
+  );
   background-size: 3px 3px;
 }
 

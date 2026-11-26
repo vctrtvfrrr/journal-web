@@ -14,16 +14,28 @@ function PopoverAnchor(props: React.ComponentProps<typeof PopoverPrimitive.Ancho
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
 }
 
-type PopoverContentProps = React.ComponentProps<typeof PopoverPrimitive.Content> & { label?: React.ReactNode };
+type PopoverContentProps = React.ComponentProps<typeof PopoverPrimitive.Content> & {
+  label?: React.ReactNode;
+};
 
-function PopoverContent({ className, align = "center", sideOffset = 6, label, children, ...props }: PopoverContentProps) {
+function PopoverContent({
+  className,
+  align = "center",
+  sideOffset = 6,
+  label,
+  children,
+  ...props
+}: PopoverContentProps) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}
         sideOffset={sideOffset}
-        className={cn("relative z-50 w-72 border border-border-strong bg-surface p-[2ch] py-3 text-foreground shadow-tui outline-none", className)}
+        className={cn(
+          "relative z-50 w-72 border border-border-strong bg-surface p-[2ch] py-3 text-foreground shadow-tui outline-none",
+          className,
+        )}
         {...props}
       >
         {label && <span className="border-label text-accent-ink">{label}</span>}

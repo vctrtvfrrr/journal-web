@@ -16,7 +16,11 @@ function SelectValue(props: React.ComponentProps<typeof SelectPrimitive.Value>) 
   return <SelectPrimitive.Value data-slot="select-value" {...props} />;
 }
 
-function SelectTrigger({ className, children, ...props }: React.ComponentProps<typeof SelectPrimitive.Trigger>) {
+function SelectTrigger({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Trigger>) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
@@ -36,7 +40,12 @@ function SelectTrigger({ className, children, ...props }: React.ComponentProps<t
   );
 }
 
-function SelectContent({ className, children, position = "popper", ...props }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+function SelectContent({
+  className,
+  children,
+  position = "popper",
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Content>) {
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -45,7 +54,8 @@ function SelectContent({ className, children, position = "popper", ...props }: R
         className={cn(
           menuContent,
           "relative max-h-(--radix-select-content-available-height)",
-          position === "popper" && "w-full min-w-(--radix-select-trigger-width) data-[side=bottom]:translate-y-0.5 data-[side=top]:-translate-y-0.5",
+          position === "popper" &&
+            "w-full min-w-(--radix-select-trigger-width) data-[side=bottom]:translate-y-0.5 data-[side=top]:-translate-y-0.5",
           className,
         )}
         {...props}
@@ -63,12 +73,26 @@ function SelectContent({ className, children, position = "popper", ...props }: R
 }
 
 function SelectLabel({ className, ...props }: React.ComponentProps<typeof SelectPrimitive.Label>) {
-  return <SelectPrimitive.Label data-slot="select-label" className={cn(menuLabel, className)} {...props} />;
+  return (
+    <SelectPrimitive.Label
+      data-slot="select-label"
+      className={cn(menuLabel, className)}
+      {...props}
+    />
+  );
 }
 
-function SelectItem({ className, children, ...props }: React.ComponentProps<typeof SelectPrimitive.Item>) {
+function SelectItem({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Item>) {
   return (
-    <SelectPrimitive.Item data-slot="select-item" className={cn(menuItem, "pr-[4ch]", className)} {...props}>
+    <SelectPrimitive.Item
+      data-slot="select-item"
+      className={cn(menuItem, "pr-[4ch]", className)}
+      {...props}
+    >
       <span aria-hidden className="w-[1ch] shrink-0">
         <SelectPrimitive.ItemIndicator>›</SelectPrimitive.ItemIndicator>
       </span>
@@ -77,8 +101,26 @@ function SelectItem({ className, children, ...props }: React.ComponentProps<type
   );
 }
 
-function SelectSeparator({ className, ...props }: React.ComponentProps<typeof SelectPrimitive.Separator>) {
-  return <SelectPrimitive.Separator data-slot="select-separator" className={cn(menuSeparator, className)} {...props} />;
+function SelectSeparator({
+  className,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Separator>) {
+  return (
+    <SelectPrimitive.Separator
+      data-slot="select-separator"
+      className={cn(menuSeparator, className)}
+      {...props}
+    />
+  );
 }
 
-export { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue };
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+};

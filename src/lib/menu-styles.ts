@@ -6,7 +6,8 @@ export const menuItem =
 
 export const menuInsetItem = "data-[inset]:pl-[4ch]";
 
-export const menuLabel = "flex h-6 items-center px-2 text-xs uppercase tracking-wider text-muted-foreground data-[inset]:pl-[4ch]";
+export const menuLabel =
+  "flex h-6 items-center px-2 text-xs uppercase tracking-wider text-muted-foreground data-[inset]:pl-[4ch]";
 
 export const menuSeparator = "mx-1 my-px h-px border-t border-dashed border-border-strong";
 

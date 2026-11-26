@@ -27,7 +27,10 @@ export function JournalShell({
         </span>
       </header>
       <main
-        className={cn("min-w-0 py-2 px-[1ch]", scroll === "page" ? "overflow-y-auto" : "overflow-hidden")}
+        className={cn(
+          "min-w-0 py-2 px-[1ch]",
+          scroll === "page" ? "overflow-y-auto" : "overflow-hidden",
+        )}
       >
         {children}
       </main>

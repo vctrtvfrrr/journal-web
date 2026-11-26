@@ -1,12 +1,4 @@
 {
-  "ignorePatterns": [
-    "spec/**",
-    "src/api/generated/**",
-    "src/components/ui/**",
-    "src/lib/menu-styles.ts",
-    "src/lib/theme.tsx",
-    "src/lib/use-media-query.ts",
-    "src/lib/utils.ts",
-    "src/index.css"
-  ]
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": ["spec/"]
 }

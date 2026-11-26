@@ -25,9 +25,12 @@ function Toaster(props: ToasterProps) {
           content: "flex flex-1 flex-col gap-0.5",
           title: "font-bold",
           description: "text-muted-foreground",
-          actionButton: "ml-auto shrink-0 self-center border border-accent bg-accent px-[1ch] text-xs text-accent-foreground hover:brightness-110",
-          cancelButton: "shrink-0 self-center border border-border-strong px-[1ch] text-xs text-muted-foreground hover:text-foreground",
-          closeButton: "absolute! top-1! right-1! left-auto! border-0! bg-transparent! text-muted-foreground! hover:text-red-ink! transform-none!",
+          actionButton:
+            "ml-auto shrink-0 self-center border border-accent bg-accent px-[1ch] text-xs text-accent-foreground hover:brightness-110",
+          cancelButton:
+            "shrink-0 self-center border border-border-strong px-[1ch] text-xs text-muted-foreground hover:text-foreground",
+          closeButton:
+            "absolute! top-1! right-1! left-auto! border-0! bg-transparent! text-muted-foreground! hover:text-red-ink! transform-none!",
         },
       }}
       {...props}

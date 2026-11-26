@@ -23,7 +23,9 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0b0e14" : "#f8f9fa");
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#0b0e14" : "#f8f9fa");
     try {
       localStorage.setItem(STORAGE_KEY, theme);
     } catch {}
@@ -34,7 +36,13 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [crt]);
 
   const value = React.useMemo<ThemeContextValue>(
-    () => ({ theme, setTheme, toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")), crt, setCrt }),
+    () => ({
+      theme,
+      setTheme,
+      toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
+      crt,
+      setCrt,
+    }),
     [theme, crt],
   );
 

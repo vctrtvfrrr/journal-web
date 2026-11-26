@@ -3,14 +3,33 @@ import type * as React from "react";
 import { cn } from "../../lib/utils";
 
 function Accordion({ className, ...props }: React.ComponentProps<typeof AccordionPrimitive.Root>) {
-  return <AccordionPrimitive.Root data-slot="accordion" className={cn("border-t border-dashed border-border-strong", className)} {...props} />;
+  return (
+    <AccordionPrimitive.Root
+      data-slot="accordion"
+      className={cn("border-t border-dashed border-border-strong", className)}
+      {...props}
+    />
+  );
 }
 
-function AccordionItem({ className, ...props }: React.ComponentProps<typeof AccordionPrimitive.Item>) {
-  return <AccordionPrimitive.Item data-slot="accordion-item" className={cn("border-b border-dashed border-border-strong", className)} {...props} />;
+function AccordionItem({
+  className,
+  ...props
+}: React.ComponentProps<typeof AccordionPrimitive.Item>) {
+  return (
+    <AccordionPrimitive.Item
+      data-slot="accordion-item"
+      className={cn("border-b border-dashed border-border-strong", className)}
+      {...props}
+    />
+  );
 }
 
-function AccordionTrigger({ className, children, ...props }: React.ComponentProps<typeof AccordionPrimitive.Trigger>) {
+function AccordionTrigger({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof AccordionPrimitive.Trigger>) {
   return (
     <AccordionPrimitive.Header className="flex">
       <AccordionPrimitive.Trigger
@@ -21,7 +40,10 @@ function AccordionTrigger({ className, children, ...props }: React.ComponentProp
         )}
         {...props}
       >
-        <span aria-hidden className="text-muted-foreground group-focus-visible:text-accent-foreground">
+        <span
+          aria-hidden
+          className="text-muted-foreground group-focus-visible:text-accent-foreground"
+        >
           <span className="group-data-[state=open]:hidden">[+]</span>
           <span className="hidden group-data-[state=open]:inline">[-]</span>
         </span>
@@ -31,10 +53,25 @@ function AccordionTrigger({ className, children, ...props }: React.ComponentProp
   );
 }
 
-function AccordionContent({ className, children, ...props }: React.ComponentProps<typeof AccordionPrimitive.Content>) {
+function AccordionContent({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof AccordionPrimitive.Content>) {
   return (
-    <AccordionPrimitive.Content data-slot="accordion-content" className="overflow-hidden" {...props}>
-      <div className={cn("ml-[1.5ch] mb-2 border-l border-border-strong pl-[2.5ch] text-foreground/85", className)}>{children}</div>
+    <AccordionPrimitive.Content
+      data-slot="accordion-content"
+      className="overflow-hidden"
+      {...props}
+    >
+      <div
+        className={cn(
+          "ml-[1.5ch] mb-2 border-l border-border-strong pl-[2.5ch] text-foreground/85",
+          className,
+        )}
+      >
+        {children}
+      </div>
     </AccordionPrimitive.Content>
   );
 }

@@ -2,8 +2,17 @@ import { Tooltip as TooltipPrimitive } from "radix-ui";
 import type * as React from "react";
 import { cn } from "../../lib/utils";
 
-function TooltipProvider({ delayDuration = 150, ...props }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
-  return <TooltipPrimitive.Provider data-slot="tooltip-provider" delayDuration={delayDuration} {...props} />;
+function TooltipProvider({
+  delayDuration = 150,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
+  return (
+    <TooltipPrimitive.Provider
+      data-slot="tooltip-provider"
+      delayDuration={delayDuration}
+      {...props}
+    />
+  );
 }
 
 function Tooltip(props: React.ComponentProps<typeof TooltipPrimitive.Root>) {
@@ -14,13 +23,21 @@ function TooltipTrigger(props: React.ComponentProps<typeof TooltipPrimitive.Trig
   return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
 }
 
-function TooltipContent({ className, sideOffset = 4, children, ...props }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+function TooltipContent({
+  className,
+  sideOffset = 4,
+  children,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
         data-slot="tooltip-content"
         sideOffset={sideOffset}
-        className={cn("z-50 max-w-[40ch] bg-foreground px-[1ch] py-0.5 text-xs text-background shadow-tui-sm", className)}
+        className={cn(
+          "z-50 max-w-[40ch] bg-foreground px-[1ch] py-0.5 text-xs text-background shadow-tui-sm",
+          className,
+        )}
         {...props}
       >
         {children}
