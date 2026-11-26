@@ -9,7 +9,7 @@ export default defineConfig({
   output: { path: "src/api/generated" },
   parser: {
     patch: {
-      // The client sends Contract-Version on every request (src/api/contract-version.ts),
+      // The client sends Contract-Version on every request (src/api/contract.ts),
       // so the generated calls must not ask each caller for it.
       input: (spec) => {
         for (const pathItem of Object.values(spec.paths ?? {})) {
