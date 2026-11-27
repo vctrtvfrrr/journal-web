@@ -6,12 +6,14 @@ export function JournalShell({
   status,
   footerAction,
   tabBar,
+  headerActions,
   scroll = "page",
 }: {
   children: ReactNode;
   status: ReactNode;
   footerAction?: ReactNode;
   tabBar?: ReactNode;
+  headerActions?: ReactNode;
   scroll?: "page" | "panes";
 }) {
   return (
@@ -25,12 +27,12 @@ export function JournalShell({
         <span className="content-center bg-accent px-[1ch] font-bold text-accent-foreground">
           Journal
         </span>
+        {headerActions && <div className="ml-auto flex items-center px-[1ch]">{headerActions}</div>}
       </header>
       <main
-        className={cn(
-          "min-w-0 py-2 px-[1ch]",
-          scroll === "page" ? "overflow-y-auto" : "overflow-hidden",
-        )}
+        className={
+          scroll === "page" ? "min-w-0 overflow-y-auto px-[1ch] py-2" : "min-w-0 overflow-hidden"
+        }
       >
         {children}
       </main>

@@ -3,6 +3,7 @@ import { Outlet } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { listTasksOptions } from "../api/generated/@tanstack/react-query.gen";
 import { ConnectedDevices } from "../components/connected-devices";
+import { DashboardColumns, SidebarToggles, useSidebars } from "../components/dashboard-columns";
 import { JournalShell } from "../components/journal-shell";
 import { LoadError } from "../components/load-error";
 import { NotesPanel } from "../components/notes-panel";
@@ -98,9 +99,18 @@ const centerSections: StackSection[] = [
 ];
 
 function DesktopHome() {
+  const sidebars = useSidebars();
   return (
-    <JournalShell status={<SyncStatus />} footerAction={<ConnectedDevices />} scroll="panes">
-      <SectionStack id="center" sections={centerSections} />
+    <JournalShell
+      status={<SyncStatus />}
+      footerAction={<ConnectedDevices />}
+      headerActions={<SidebarToggles sidebars={sidebars} />}
+      scroll="panes"
+    >
+      <DashboardColumns
+        sidebars={sidebars}
+        center={<SectionStack id="center" sections={centerSections} />}
+      />
       <Outlet />
     </JournalShell>
   );
