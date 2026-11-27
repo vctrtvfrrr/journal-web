@@ -11,6 +11,7 @@ import {
   stringifySearchWith,
 } from "@tanstack/react-router";
 import { hasSession } from "./lib/session";
+import { MODULES, type ModuleId } from "./modules/registry";
 import { TIMELINE_SEARCH_KEYS, validateTimelineSearch } from "./lib/timeline-filters";
 import { ErrorPage } from "./routes/error";
 import { HomePage } from "./routes/home";
@@ -62,11 +63,20 @@ const noteRoute = createRoute({
   component: NotePage,
 });
 
+const moduleRoutes = MODULES.map((module) =>
+  createRoute({
+    getParentRoute: () => homeRoute,
+    path: module.id,
+    staticData: { moduleId: module.id },
+    component: module.Page,
+  }),
+);
+
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {
   return createRouter({
     routeTree: rootRoute.addChildren([
       loginRoute,
-      homeRoute.addChildren([taskListRoute, taskRoute, noteRoute]),
+      homeRoute.addChildren([taskListRoute, taskRoute, noteRoute, ...moduleRoutes]),
     ]),
     context: { queryClient },
     history,
@@ -76,6 +86,9 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
 }
 
 declare module "@tanstack/react-router" {
+  interface StaticDataRouteOption {
+    moduleId?: ModuleId;
+  }
   interface Register {
     router: ReturnType<typeof createAppRouter>;
   }
