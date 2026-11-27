@@ -26,6 +26,7 @@ export type StackSection = {
   moduleHref?: `/${ModuleId}`;
   active?: boolean;
   panel?: PanelId;
+  shortcuts?: (event: KeyboardEvent<HTMLElement>) => void;
 };
 
 const HEADER_HEIGHT = "1.5rem";
@@ -110,7 +111,10 @@ function StackPanel({
           tabIndex: -1,
           "data-panel": section.panel,
           "aria-keyshortcuts": `Alt+${panelNumber(section.panel)}`,
-          onKeyDown: leaveFieldOnEscape,
+          onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+            if (!collapsed) section.shortcuts?.(event);
+            leaveFieldOnEscape(event);
+          },
         })}
       >
         <SectionHeader

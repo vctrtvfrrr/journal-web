@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNotebooks } from "../lib/notebooks";
+import { useNotesSearch } from "../lib/notes-search";
 import { useRevealNote } from "../lib/reveal-note";
 import { useStoredState } from "../lib/stored-state";
 import { useTimelineAnchor } from "../lib/timeline-filters";
@@ -8,12 +9,14 @@ import { Skeleton } from "./ui/skeleton";
 import { NotebookCreate } from "./notebook-create";
 import { NotebookTab } from "./notebook-tab";
 import { QuickNoteForm } from "./quick-note-form";
+import { NotesSearchToggle } from "./notes-search-toggle";
 import { NotesTimeline } from "./notes-timeline";
 import { TimelineFilterBar } from "./timeline-filter-bar";
 import { Tabs, TabsContent, TabsList } from "./ui/tabs";
 
 export function NotesPanel() {
   const notebooks = useNotebooks();
+  const search = useNotesSearch();
   const [storedId, setStoredId] = useStoredState<string>("journal-notebook", "");
   const revealedNotebook = useRevealNote().target?.notebook_id;
   useEffect(() => {
@@ -30,6 +33,7 @@ export function NotesPanel() {
     <section
       aria-labelledby="notes-heading"
       className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-3"
+      onKeyDown={search.openOnSlash}
     >
       <h2 id="notes-heading" className="sr-only">
         Notes
@@ -38,7 +42,7 @@ export function NotesPanel() {
       {notebooks.isError && (
         <LoadError error={notebooks.error} onRetry={() => void notebooks.refetch()} />
       )}
-      {selected && <TimelineFilterBar />}
+      {selected && search.visible && <TimelineFilterBar />}
       {notebooks.data && (
         <Tabs value={selected?.id ?? ""} onValueChange={switchNotebook} className="gap-0">
           <div className="flex min-w-0 items-end shadow-[inset_0_-1px_0_0_var(--border-strong)]">
@@ -62,6 +66,7 @@ export function NotesPanel() {
               </p>
             )}
             <NotebookCreate onCreated={setStoredId} />
+            {selected && <NotesSearchToggle />}
           </div>
           {selected && <QuickNoteForm notebookId={selected.id} onNotebookCreated={setStoredId} />}
           {selected && (

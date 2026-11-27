@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import type { Note, Task } from "./api/generated";
 import { aNote, aNotebook, api, device, notesPage, problem } from "../test/api";
 import { renderAppAt } from "../test/render";
+import { setViewportWidth } from "../test/viewport";
 
 const diary = aNotebook("1", "Diary");
 const plants = aNotebook("2", "Plants");
@@ -38,11 +39,36 @@ function notes() {
   return within(screen.getByRole("region", { name: "Notes" }));
 }
 
+function searchToggle() {
+  return notes().getByRole("button", { name: "Search notes" });
+}
+
+async function openSearch() {
+  await timeline();
+  await userEvent.click(searchToggle());
+}
+
+test("hides the search until the icon opens it, focused on the text", async () => {
+  serveNotes([aNote("1", "2026-11-24", "Painted the quarto")]);
+  renderAppAt("/");
+
+  await timeline();
+  expect(notes().queryByRole("search")).toBeNull();
+  expect(searchToggle().getAttribute("aria-expanded")).toBe("false");
+  expect(searchToggle().getAttribute("title")).toBe("Search notes (/)");
+
+  await userEvent.click(searchToggle());
+
+  expect(searchToggle().getAttribute("aria-expanded")).toBe("true");
+  expect(document.activeElement).toBe(notes().getByRole("searchbox", { name: "Search notes" }));
+});
+
 test("puts the search above the notebook tabs, outside the timeline", async () => {
   serveNotes([aNote("1", "2026-11-24", "Painted the quarto")]);
   renderAppAt("/");
 
   const panel = await timeline();
+  await openSearch();
   const search = notes().getByRole("search");
   const tabs = notes().getByRole("tablist", { name: "Notebooks" });
   expect(search.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -53,7 +79,7 @@ test("hints the Partial Date format inside the date fields", async () => {
   serveNotes([]);
   renderAppAt("/");
 
-  await timeline();
+  await openSearch();
   for (const name of ["From", "To"])
     expect(notes().getByRole("textbox", { name }).getAttribute("placeholder")).toBe(
       "YYYY, YYYY-MM, …",
@@ -71,6 +97,7 @@ test("finds the notes that mention a text, ignoring case and accents", async () 
 
   const panel = await timeline();
   expect(await panel.findByText("Bought plants")).toBeDefined();
+  await openSearch();
   await userEvent.type(notes().getByRole("searchbox", { name: "Search notes" }), "quarto");
 
   await waitFor(() => expect(history.location.search).toBe("?q=quarto"));
@@ -91,6 +118,7 @@ test("keeps a coarse note in every range that overlaps its period", async () => 
   const history = renderAppAt("/");
 
   const panel = await timeline();
+  await openSearch();
   await userEvent.type(await notes().findByRole("textbox", { name: "From" }), "2025-05-10");
   await userEvent.type(notes().getByRole("textbox", { name: "To" }), "2025-06-30");
 
@@ -129,6 +157,7 @@ test("shows a malformed date and an inverted range in the filter bar without app
   const history = renderAppAt("/");
 
   const panel = await timeline();
+  await openSearch();
   const from = await notes().findByRole("textbox", { name: "From" });
   const to = notes().getByRole("textbox", { name: "To" });
   await userEvent.type(from, "25-03");
@@ -160,6 +189,7 @@ test("shows a search the API rejects at the top of the timeline and keeps the no
 
   const panel = await timeline();
   expect(await panel.findByText("Painted the quarto")).toBeDefined();
+  await openSearch();
   await userEvent.type(notes().getByRole("textbox", { name: "From" }), "2025-02-30");
 
   expect(
@@ -243,4 +273,109 @@ test("clears every filter at once", async () => {
   expect(notes().getByRole<HTMLInputElement>("searchbox", { name: "Search notes" }).value).toBe("");
   expect(notes().getByRole<HTMLInputElement>("textbox", { name: "From" }).value).toBe("");
   expect(panel.getByText("(root) beginning of notebook · 2 notes")).toBeDefined();
+});
+
+test("shows the search while filters are active and clears them when the icon closes it", async () => {
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto"), aNote("2", "2024-01", "Old")]);
+  const history = renderAppAt("/?q=quarto&from=2025");
+
+  const panel = await timeline();
+  expect(notes().getByRole("search")).toBeDefined();
+  expect(searchToggle().getAttribute("aria-expanded")).toBe("true");
+
+  await userEvent.click(searchToggle());
+
+  expect(notes().queryByRole("search")).toBeNull();
+  expect(searchToggle().getAttribute("aria-expanded")).toBe("false");
+  expect(await panel.findByText("Old")).toBeDefined();
+  expect(history.location.search).toBe("");
+});
+
+test("keeps an empty search open across a notebook switch", async () => {
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
+  renderAppAt("/");
+
+  await openSearch();
+  await userEvent.click(screen.getByRole("tab", { name: "Plants" }));
+  await timeline("Plants");
+
+  expect(notes().getByRole("search")).toBeDefined();
+});
+
+function searchField() {
+  return notes().getByRole<HTMLInputElement>("searchbox", { name: "Search notes" });
+}
+
+test("slash opens the search from the focused Notes panel without typing itself", async () => {
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
+  renderAppAt("/");
+
+  await timeline();
+  await userEvent.keyboard("{Alt>}2{/Alt}");
+  await waitFor(() => expect(document.activeElement?.getAttribute("data-panel")).toBe("notes"));
+  await userEvent.keyboard("/");
+
+  expect(document.activeElement).toBe(searchField());
+  expect(searchField().value).toBe("");
+});
+
+test("slash focuses the search when it is already open", async () => {
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
+  renderAppAt("/?q=quarto");
+
+  await timeline();
+  notes().getByRole("tab", { name: "Diary" }).focus();
+  await userEvent.keyboard("/");
+
+  expect(document.activeElement).toBe(searchField());
+  expect(searchField().value).toBe("quarto");
+});
+
+test("slash does nothing outside the Notes panel, in a field or in a dialog", async () => {
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
+  renderAppAt("/");
+
+  await timeline();
+  await userEvent.keyboard("{Alt>}1{/Alt}");
+  await waitFor(() => expect(document.activeElement?.getAttribute("data-panel")).toBe("tasks"));
+  await userEvent.keyboard("/");
+  expect(notes().queryByRole("search")).toBeNull();
+
+  const quickNote = notes().getByRole<HTMLInputElement>("textbox", { name: "Quick note" });
+  await userEvent.type(quickNote, "a/b");
+  expect(quickNote.value).toBe("a/b");
+  expect(notes().queryByRole("search")).toBeNull();
+
+  await userEvent.click(notes().getByRole("button", { name: "New note" }));
+  const dialog = within(await screen.findByRole("dialog", { name: "New note" }));
+  dialog.getByRole("button", { name: "save" }).focus();
+  await userEvent.keyboard("/");
+  expect(screen.queryByRole("search", { hidden: true })).toBeNull();
+});
+
+test("slash does nothing while the Notes section is collapsed", async () => {
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
+  renderAppAt("/");
+
+  await timeline();
+  await userEvent.click(screen.getByRole("button", { name: /^Notes/i, expanded: true }));
+  await userEvent.keyboard("/");
+  await userEvent.click(screen.getByRole("button", { name: /^Notes/i, expanded: false }));
+
+  expect(notes().queryByRole("search")).toBeNull();
+});
+
+test("hides the search behind the same icon on mobile", async () => {
+  setViewportWidth(390);
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+  await timeline();
+  expect(notes().queryByRole("search")).toBeNull();
+
+  notes().getByRole("tab", { name: "Diary" }).focus();
+  await userEvent.keyboard("/");
+
+  expect(document.activeElement).toBe(searchField());
 });

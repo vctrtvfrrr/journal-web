@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { zListNotesQuery, zPartialDateBound } from "../api/generated/zod.gen";
 import { periodEnd, periodStart } from "../lib/partial-date";
+import { useNotesSearch } from "../lib/notes-search";
 import { isFiltering, useTimelineFilters } from "../lib/timeline-filters";
 import { ErrorText, Field } from "./field";
 import { Button } from "./ui/button";
@@ -33,6 +34,7 @@ function rangeError(range: Range) {
 export function TimelineFilterBar() {
   const id = useId();
   const [filters, applyFilters] = useTimelineFilters();
+  const search = useNotesSearch();
   const [text, setText] = useState(filters.q ?? "");
   const [range, setRange] = useState({ from: filters.from ?? "", to: filters.to ?? "" });
 
@@ -68,6 +70,7 @@ export function TimelineFilterBar() {
     setText("");
     setRange({ from: "", to: "" });
     applyFilters({ q: undefined, from: undefined, to: undefined });
+    search.open();
   };
 
   return (
@@ -75,6 +78,7 @@ export function TimelineFilterBar() {
       <div className="grid grid-cols-2 gap-x-[1ch] gap-y-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <Field label="Search" htmlFor={`${id}-q`} className="col-span-2 lg:col-span-1">
           <Input
+            ref={search.searchField}
             id={`${id}-q`}
             type="search"
             aria-label="Search notes"

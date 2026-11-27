@@ -16,6 +16,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useDesktopShortcuts } from "../lib/desktop-shortcuts";
 import { useNotebooks } from "../lib/notebooks";
+import { NotesSearchProvider, useNotesSearch } from "../lib/notes-search";
 import { PanelFocusProvider } from "../lib/panel-focus";
 import { RevealNoteProvider, useRevealNote } from "../lib/reveal-note";
 import { useStoredState } from "../lib/stored-state";
@@ -140,15 +141,26 @@ function MobileHome() {
   );
 }
 
-const centerSections: StackSection[] = [
-  { id: "tasks", title: "Tasks", content: <TasksPanel />, defaultSize: "67%", panel: "tasks" },
-  { id: "notes", title: "Notes", content: <NotesPanel />, defaultSize: "33%", panel: "notes" },
-];
+function useCenterSections(): StackSection[] {
+  const notesSearch = useNotesSearch();
+  return [
+    { id: "tasks", title: "Tasks", content: <TasksPanel />, defaultSize: "67%", panel: "tasks" },
+    {
+      id: "notes",
+      title: "Notes",
+      content: <NotesPanel />,
+      defaultSize: "33%",
+      panel: "notes",
+      shortcuts: notesSearch.openOnSlash,
+    },
+  ];
+}
 
 function DesktopHome() {
   const sidebars = useSidebars();
   const active = useActiveModule();
   useDesktopShortcuts({ sidebars, activeModule: active });
+  const centerSections = useCenterSections();
   return (
     <JournalShell
       status={<SyncStatus />}
@@ -182,13 +194,15 @@ export function HomePage() {
   const desktop = useMediaQuery("(min-width: 1024px)");
   return (
     <RevealNoteProvider>
-      {desktop ? (
-        <PanelFocusProvider>
-          <DesktopHome />
-        </PanelFocusProvider>
-      ) : (
-        <MobileHome />
-      )}
+      <NotesSearchProvider>
+        {desktop ? (
+          <PanelFocusProvider>
+            <DesktopHome />
+          </PanelFocusProvider>
+        ) : (
+          <MobileHome />
+        )}
+      </NotesSearchProvider>
     </RevealNoteProvider>
   );
 }
