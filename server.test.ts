@@ -58,7 +58,7 @@ describe("production server", () => {
 });
 
 describe("development proxy", () => {
-  test("forwards /api requests to the API without rewriting the path", async () => {
+  test("forwards /api requests to the API without the /api prefix, like the production router", async () => {
     const seen: {
       url: string;
       method: string;
@@ -80,7 +80,7 @@ describe("development proxy", () => {
           status: 201,
           headers: {
             "content-type": "application/json",
-            "set-cookie": "__Secure-journal_token=t; Path=/api",
+            "set-cookie": "__Host-journal_token=t; Path=/",
           },
         });
       },
@@ -97,7 +97,7 @@ describe("development proxy", () => {
 
     expect(seen).toEqual([
       {
-        url: "/api/devices?x=1",
+        url: "/devices?x=1",
         method: "POST",
         body: '{"password":"p"}',
         cookie: "a=b",
@@ -105,7 +105,7 @@ describe("development proxy", () => {
       },
     ]);
     expect(response.status).toBe(201);
-    expect(response.headers.get("set-cookie")).toBe("__Secure-journal_token=t; Path=/api");
+    expect(response.headers.get("set-cookie")).toBe("__Host-journal_token=t; Path=/");
     expect(await response.text()).toBe('{"id":"1"}');
   });
 });

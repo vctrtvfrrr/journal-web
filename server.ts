@@ -53,7 +53,7 @@ export async function createProductionHandler(directory: string) {
 export function createApiProxy(apiOrigin: string) {
   return (request: Request): Promise<Response> => {
     const { pathname, search } = new URL(request.url);
-    return fetch(`${apiOrigin}${pathname}${search}`, {
+    return fetch(`${apiOrigin}${pathname.replace(/^\/api(?=\/)/, "")}${search}`, {
       method: request.method,
       headers: request.headers,
       body: request.body,

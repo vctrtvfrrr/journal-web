@@ -11,9 +11,9 @@ bun install
 bun run dev
 ```
 
-O app abre em `http://localhost:4000`. O servidor de desenvolvimento repassa `/api/*` para `localhost:3000` sem reescrever o caminho, então o browser fala com o app e com a API na mesma origem, como em produção. Use `API_ORIGIN` para apontar para outra API e `PORT` para mudar a porta.
+O app abre em `http://localhost:4000`. O servidor de desenvolvimento repassa `/api/*` para `localhost:3000` sem o prefixo `/api`, como o Traefik faz em produção, então o browser fala com o app e com a API na mesma origem, como em produção. Use `API_ORIGIN` para apontar para outra API e `PORT` para mudar a porta.
 
-O login envia `token_delivery: "cookie"`, e a API grava o token no cookie `__Secure-journal_token` (`HttpOnly; Secure`). Chrome e Firefox aceitam esse cookie em `http://localhost`. O Safari não aceita, então use outro browser em desenvolvimento.
+O login envia `token_delivery: "cookie"`, e a API grava o token no cookie `__Host-journal_token` (`HttpOnly; Secure`). Chrome e Firefox aceitam esse cookie em `http://localhost`. O Safari não aceita, então use outro browser em desenvolvimento.
 
 ## Contrato da API
 
