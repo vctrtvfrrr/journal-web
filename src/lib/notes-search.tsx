@@ -8,14 +8,14 @@ import {
   type ReactNode,
 } from "react";
 import { isEditable } from "./desktop-shortcuts";
-import { isFiltering, useTimelineFilters } from "./timeline-filters";
+import { isFiltering, NO_FILTERS, useTimelineFilters } from "./timeline-filters";
 
 type NotesSearch = {
   visible: boolean;
   open: () => void;
   close: () => void;
   openOnSlash: (event: KeyboardEvent<HTMLElement>) => void;
-  searchField: (element: HTMLInputElement | null) => void;
+  searchFieldRef: (element: HTMLInputElement | null) => void;
 };
 
 const NotesSearchContext = createContext<NotesSearch | undefined>(undefined);
@@ -26,7 +26,7 @@ export function NotesSearchProvider({ children }: { children: ReactNode }) {
   const field = useRef<HTMLInputElement | null>(null);
   const focusOnMount = useRef(false);
 
-  const searchField = useCallback((element: HTMLInputElement | null) => {
+  const searchFieldRef = useCallback((element: HTMLInputElement | null) => {
     field.current = element;
     if (!element || !focusOnMount.current) return;
     focusOnMount.current = false;
@@ -41,12 +41,13 @@ export function NotesSearchProvider({ children }: { children: ReactNode }) {
 
   const close = () => {
     setOpened(false);
-    applyFilters({ q: undefined, from: undefined, to: undefined });
+    applyFilters(NO_FILTERS);
   };
 
   const openOnSlash = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== "/" || event.defaultPrevented) return;
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    // AltGr reaches the browser as Ctrl+Alt, and some layouts type "/" with it.
+    if (event.metaKey || event.ctrlKey !== event.altKey) return;
     if (isEditable(event.target) || !event.currentTarget.contains(event.target as Node)) return;
     event.preventDefault();
     open();
@@ -54,7 +55,7 @@ export function NotesSearchProvider({ children }: { children: ReactNode }) {
 
   return (
     <NotesSearchContext
-      value={{ visible: opened || isFiltering(filters), open, close, openOnSlash, searchField }}
+      value={{ visible: opened || isFiltering(filters), open, close, openOnSlash, searchFieldRef }}
     >
       {children}
     </NotesSearchContext>
@@ -63,6 +64,6 @@ export function NotesSearchProvider({ children }: { children: ReactNode }) {
 
 export function useNotesSearch() {
   const search = useContext(NotesSearchContext);
-  if (!search) throw new Error("useNotesSearch needs a NotesSearchProvider");
+  if (!search) throw new Error("useNotesSearch must be used within NotesSearchProvider");
   return search;
 }

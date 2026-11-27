@@ -91,6 +91,7 @@ function MobileHome() {
   const [storedView, setView] = useStoredState<MobileView>("journal-home-view", "tasks");
   const view = mobileViews.find((name) => name === storedView) ?? "tasks";
   const active = useActiveModule();
+  const notesSearch = useNotesSearch();
   const navigate = useNavigate();
   const revealPending = useRevealNote().target !== undefined;
   useEffect(() => {
@@ -131,7 +132,7 @@ function MobileHome() {
               <TasksPanel />
             </TabsContent>
             <TabsContent value="notes">
-              <NotesPanel />
+              <NotesPanel onKeyDown={notesSearch.openOnSlash} />
             </TabsContent>
             <Outlet />
           </>
@@ -151,7 +152,7 @@ function useCenterSections(): StackSection[] {
       content: <NotesPanel />,
       defaultSize: "33%",
       panel: "notes",
-      shortcuts: notesSearch.openOnSlash,
+      onExpandedKeyDown: notesSearch.openOnSlash,
     },
   ];
 }

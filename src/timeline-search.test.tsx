@@ -43,6 +43,10 @@ function searchToggle() {
   return notes().getByRole("button", { name: "Search notes" });
 }
 
+function searchField() {
+  return notes().getByRole<HTMLInputElement>("searchbox", { name: "Search notes" });
+}
+
 async function openSearch() {
   await timeline();
   await userEvent.click(searchToggle());
@@ -302,10 +306,6 @@ test("keeps an empty search open across a notebook switch", async () => {
   expect(notes().getByRole("search")).toBeDefined();
 });
 
-function searchField() {
-  return notes().getByRole<HTMLInputElement>("searchbox", { name: "Search notes" });
-}
-
 test("slash opens the search from the focused Notes panel without typing itself", async () => {
   serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
   renderAppAt("/");
@@ -317,6 +317,17 @@ test("slash opens the search from the focused Notes panel without typing itself"
 
   expect(document.activeElement).toBe(searchField());
   expect(searchField().value).toBe("");
+});
+
+test("slash typed with AltGr also opens the search", async () => {
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
+  renderAppAt("/");
+
+  await timeline();
+  notes().getByRole("tab", { name: "Diary" }).focus();
+  await userEvent.keyboard("{Control>}{Alt>}/{/Alt}{/Control}");
+
+  expect(document.activeElement).toBe(searchField());
 });
 
 test("slash focuses the search when it is already open", async () => {

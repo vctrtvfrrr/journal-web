@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type KeyboardEvent } from "react";
 import { useNotebooks } from "../lib/notebooks";
 import { useNotesSearch } from "../lib/notes-search";
 import { useRevealNote } from "../lib/reveal-note";
@@ -14,7 +14,11 @@ import { NotesTimeline } from "./notes-timeline";
 import { TimelineFilterBar } from "./timeline-filter-bar";
 import { Tabs, TabsContent, TabsList } from "./ui/tabs";
 
-export function NotesPanel() {
+export function NotesPanel({
+  onKeyDown,
+}: {
+  onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
+}) {
   const notebooks = useNotebooks();
   const search = useNotesSearch();
   const [storedId, setStoredId] = useStoredState<string>("journal-notebook", "");
@@ -33,7 +37,7 @@ export function NotesPanel() {
     <section
       aria-labelledby="notes-heading"
       className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-3"
-      onKeyDown={search.openOnSlash}
+      onKeyDown={onKeyDown}
     >
       <h2 id="notes-heading" className="sr-only">
         Notes

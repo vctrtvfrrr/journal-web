@@ -6,6 +6,7 @@ export type TimelineFilters = Pick<ListNotesData["query"], "q" | "from" | "to">;
 type TimelineSearch = TimelineFilters & { anchor?: PartialDateBound };
 
 const FILTER_KEYS = ["q", "from", "to"] as const;
+export const NO_FILTERS: TimelineFilters = { q: undefined, from: undefined, to: undefined };
 export const TIMELINE_SEARCH_KEYS = [...FILTER_KEYS, "anchor"] as const;
 
 const searchSchemas = { ...zListNotesQuery.shape, anchor: zPartialDateBound.optional() };
