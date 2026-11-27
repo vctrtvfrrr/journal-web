@@ -6,6 +6,7 @@ import { ConnectedDevices } from "../components/connected-devices";
 import { JournalShell } from "../components/journal-shell";
 import { LoadError } from "../components/load-error";
 import { NotesPanel } from "../components/notes-panel";
+import { SectionStack, type StackSection } from "../components/section-stack";
 import { TaskCreateForm } from "../components/task-create-form";
 import { TaskList } from "../components/task-list";
 import { Skeleton } from "../components/ui/skeleton";
@@ -91,17 +92,15 @@ function MobileHome() {
   );
 }
 
+const centerSections: StackSection[] = [
+  { id: "tasks", title: "Tasks", content: <TasksPanel />, defaultSize: "67%" },
+  { id: "notes", title: "Notes", content: <NotesPanel />, defaultSize: "33%" },
+];
+
 function DesktopHome() {
   return (
     <JournalShell status={<SyncStatus />} footerAction={<ConnectedDevices />} scroll="panes">
-      <div className="grid h-full grid-cols-2 gap-[2ch]">
-        <div className="min-h-0 overflow-y-auto px-[1ch]">
-          <TasksPanel />
-        </div>
-        <div className="min-h-0 overflow-y-auto px-[1ch]">
-          <NotesPanel />
-        </div>
-      </div>
+      <SectionStack id="center" sections={centerSections} />
       <Outlet />
     </JournalShell>
   );
