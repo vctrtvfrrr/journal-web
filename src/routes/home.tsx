@@ -1,5 +1,5 @@
 import { useIsMutating, useQuery } from "@tanstack/react-query";
-import { Outlet } from "@tanstack/react-router";
+import { Link, Outlet } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { listTasksOptions } from "../api/generated/@tanstack/react-query.gen";
 import { ConnectedDevices } from "../components/connected-devices";
@@ -16,6 +16,7 @@ import { useNotebooks } from "../lib/notebooks";
 import { RevealNoteProvider, useRevealNote } from "../lib/reveal-note";
 import { useStoredState } from "../lib/stored-state";
 import { useMediaQuery } from "../lib/use-media-query";
+import { useActiveModule } from "../modules/use-active-module";
 
 function useTasks() {
   return useQuery({ ...listTasksOptions(), meta: { handledByRoute: true } });
@@ -98,20 +99,46 @@ const centerSections: StackSection[] = [
   { id: "notes", title: "Notes", content: <NotesPanel />, defaultSize: "33%" },
 ];
 
+function ModuleBreadcrumb({ title }: { title: string }) {
+  return (
+    <nav aria-label="Breadcrumb" className="flex items-center gap-[1ch] px-[1ch]">
+      <Link to="/" search={(previous) => previous} aria-label="Back to Tasks & Notes">
+        ← Tasks &amp; Notes
+      </Link>
+      <span aria-hidden>/</span>
+      <span>{title}</span>
+    </nav>
+  );
+}
+
 function DesktopHome() {
   const sidebars = useSidebars();
+  const active = useActiveModule();
   return (
     <JournalShell
       status={<SyncStatus />}
       footerAction={<ConnectedDevices />}
+      breadcrumb={active && <ModuleBreadcrumb title={active.title} />}
       headerActions={<SidebarToggles sidebars={sidebars} />}
       scroll="panes"
     >
       <DashboardColumns
         sidebars={sidebars}
-        center={<SectionStack id="center" sections={centerSections} />}
+        activeModule={active?.id}
+        center={
+          <>
+            <div hidden={!!active} className="h-full">
+              <SectionStack id="center" sections={centerSections} />
+            </div>
+            {active && (
+              <div className="h-full overflow-y-auto py-2">
+                <Outlet />
+              </div>
+            )}
+          </>
+        }
       />
-      <Outlet />
+      {!active && <Outlet />}
     </JournalShell>
   );
 }

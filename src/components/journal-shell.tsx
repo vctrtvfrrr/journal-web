@@ -6,6 +6,7 @@ export function JournalShell({
   status,
   footerAction,
   tabBar,
+  breadcrumb,
   headerActions,
   scroll = "page",
 }: {
@@ -13,6 +14,7 @@ export function JournalShell({
   status: ReactNode;
   footerAction?: ReactNode;
   tabBar?: ReactNode;
+  breadcrumb?: ReactNode;
   headerActions?: ReactNode;
   scroll?: "page" | "panes";
 }) {
@@ -27,6 +29,7 @@ export function JournalShell({
         <span className="content-center bg-accent px-[1ch] font-bold text-accent-foreground">
           Journal
         </span>
+        {breadcrumb}
         {headerActions && <div className="ml-auto flex items-center px-[1ch]">{headerActions}</div>}
       </header>
       <main
