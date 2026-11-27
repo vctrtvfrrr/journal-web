@@ -2,7 +2,8 @@ import { useId, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { toast } from "../../components/ui/sonner";
-import { DemoRow, ModulePage } from "../demo-badge";
+import { ModulePage } from "../module-page";
+import { DemoRow } from "./demo-row";
 
 const month = { label: "November 2026", income: 8000, expenses: 3420 };
 
@@ -73,7 +74,7 @@ export function Widget() {
 export function Page() {
   const largest = categories[0][1];
   return (
-    <ModulePage title="Finance">
+    <ModulePage title="Finance" demo>
       <QuickAdd />
       <dl className="flex flex-wrap gap-[3ch]">
         <div>

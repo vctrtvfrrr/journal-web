@@ -33,11 +33,11 @@ export function useStoredState<T extends string>(key: StoredKey, fallback: T) {
 export function useStoredSet(key: StoredKey) {
   const [stored, store] = useStoredState<string>(key, "");
   const members = new Set(stored.split(",").filter(Boolean));
-  const toggle = (member: string, present: boolean) => {
+  const setMember = (member: string, present: boolean) => {
     const next = new Set(members);
     if (present) next.add(member);
     else next.delete(member);
     store([...next].join(","));
   };
-  return [members, toggle] as const;
+  return [members, setMember] as const;
 }

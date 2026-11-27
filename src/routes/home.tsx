@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { listTasksOptions } from "../api/generated/@tanstack/react-query.gen";
 import { ConnectedDevices } from "../components/connected-devices";
 import { DaySummary } from "../components/day-summary";
-import { DashboardColumns, SidebarToggles, useSidebars } from "../components/dashboard-columns";
+import { DashboardColumns, SidebarToggles } from "../components/dashboard-columns";
 import { JournalShell } from "../components/journal-shell";
 import { LoadError } from "../components/load-error";
 import { NotesPanel } from "../components/notes-panel";
@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { useNotebooks } from "../lib/notebooks";
 import { RevealNoteProvider, useRevealNote } from "../lib/reveal-note";
 import { useStoredState } from "../lib/stored-state";
+import { useSidebars } from "../lib/sidebars";
 import { useMediaQuery } from "../lib/use-media-query";
 import { useActiveModule } from "../modules/use-active-module";
 
@@ -64,10 +65,27 @@ function SyncStatus() {
   return <span className={failed ? "text-red-ink" : "text-green-ink"}>{status}</span>;
 }
 
+function ModuleBreadcrumb({ title, compact }: { title: string; compact: boolean }) {
+  return (
+    <nav aria-label="Breadcrumb" className="flex items-center gap-[1ch] px-[1ch]">
+      <Link
+        to="/"
+        search={(previous) => previous}
+        aria-label={compact ? "Back" : "Back to Tasks & Notes"}
+      >
+        {compact ? "←" : "← Tasks & Notes"}
+      </Link>
+      {!compact && <span aria-hidden>/</span>}
+      <span>{title}</span>
+    </nav>
+  );
+}
+
 const mobileViews = ["widgets", "tasks", "notes"] as const;
+type MobileView = (typeof mobileViews)[number];
 
 function MobileHome() {
-  const [storedView, setView] = useStoredState<string>("journal-home-view", "tasks");
+  const [storedView, setView] = useStoredState<MobileView>("journal-home-view", "tasks");
   const view = mobileViews.find((name) => name === storedView) ?? "tasks";
   const active = useActiveModule();
   const navigate = useNavigate();
@@ -80,7 +98,7 @@ function MobileHome() {
   }, [active]);
 
   const chooseView = (next: string) => {
-    setView(next);
+    setView(mobileViews.find((name) => name === next) ?? "tasks");
     if (active) void navigate({ to: "/", search: (previous) => previous });
   };
 
@@ -89,16 +107,7 @@ function MobileHome() {
       <JournalShell
         status={<SyncStatus />}
         footerAction={<ConnectedDevices />}
-        breadcrumb={
-          active && (
-            <nav aria-label="Breadcrumb" className="flex items-center gap-[1ch] px-[1ch]">
-              <Link to="/" search={(previous) => previous} aria-label="Back">
-                ←
-              </Link>
-              <span>{active.title}</span>
-            </nav>
-          )
-        }
+        breadcrumb={active && <ModuleBreadcrumb title={active.title} compact />}
         tabBar={
           <TabsList aria-label="View" variant="group" className="px-[1ch]">
             <TabsTrigger value="widgets">Widgets</TabsTrigger>
@@ -134,18 +143,6 @@ const centerSections: StackSection[] = [
   { id: "notes", title: "Notes", content: <NotesPanel />, defaultSize: "33%" },
 ];
 
-function ModuleBreadcrumb({ title }: { title: string }) {
-  return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-[1ch] px-[1ch]">
-      <Link to="/" search={(previous) => previous} aria-label="Back to Tasks & Notes">
-        ← Tasks &amp; Notes
-      </Link>
-      <span aria-hidden>/</span>
-      <span>{title}</span>
-    </nav>
-  );
-}
-
 function DesktopHome() {
   const sidebars = useSidebars();
   const active = useActiveModule();
@@ -153,7 +150,7 @@ function DesktopHome() {
     <JournalShell
       status={<SyncStatus />}
       footerAction={<ConnectedDevices />}
-      breadcrumb={active && <ModuleBreadcrumb title={active.title} />}
+      breadcrumb={active && <ModuleBreadcrumb title={active.title} compact={false} />}
       headerActions={<SidebarToggles sidebars={sidebars} />}
       scroll="panes"
     >

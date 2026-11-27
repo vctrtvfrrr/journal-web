@@ -1,6 +1,13 @@
-import { DemoRow, ModulePage } from "../demo-badge";
+import { ModulePage } from "../module-page";
+import { DemoRow } from "./demo-row";
 
-const now = { place: "São Paulo", icon: "☀", temperature: 24, summary: "Sunny, rain from 18:00" };
+export const now = {
+  place: "São Paulo",
+  icon: "☀",
+  temperature: 24,
+  rainFrom: "18:00",
+  summary: "Sunny, rain from 18:00",
+};
 
 const hours = [
   ["12", "☀", 26],
@@ -36,7 +43,7 @@ export function Widget() {
     <div className="grid gap-1">
       <p>
         <span aria-hidden>{now.icon}</span> {now.temperature}° {now.place}{" "}
-        <span className="text-muted-foreground">→ ☂ 18h</span>
+        <span className="text-muted-foreground">→ ☂ {now.rainFrom}</span>
       </p>
       <Hours count={6} />
     </div>
@@ -45,7 +52,7 @@ export function Widget() {
 
 export function Page() {
   return (
-    <ModulePage title="Weather">
+    <ModulePage title="Weather" demo>
       <p className="text-xl">
         <span aria-hidden>{now.icon}</span> {now.temperature}° · {now.place}
       </p>

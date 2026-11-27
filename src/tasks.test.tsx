@@ -3,21 +3,8 @@ import { type BoundFunctions, screen, waitFor, within, type queries } from "@tes
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { Task, TaskChanges, TaskInput } from "./api/generated";
-import { api, device, problem, validationProblem } from "../test/api";
+import { aTask, api, device, problem, validationProblem } from "../test/api";
 import { renderAppAt } from "../test/render";
-
-function aTask(overrides: Partial<Task>): Task {
-  return {
-    id: "0193b3a0-0000-7000-8000-000000000101",
-    title: "Read the journal",
-    description: null,
-    status: "todo",
-    priority: 3,
-    created_at: "2026-11-23T10:00:00Z",
-    updated_at: "2026-11-23T10:00:00Z",
-    ...overrides,
-  };
-}
 
 const urgent = aTask({
   id: "0193b3a0-0000-7000-8000-000000000102",

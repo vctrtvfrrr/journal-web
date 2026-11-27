@@ -2,19 +2,10 @@ import { beforeEach, expect, test } from "bun:test";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import type { Task } from "./api/generated";
-import { aNotebook, api, device } from "../test/api";
+import { aNotebook, aTask, api, device } from "../test/api";
 import { renderAppAt } from "../test/render";
 
-const task: Task = {
-  id: "0193b3a0-0000-7000-8000-000000000101",
-  title: "Water the ferns",
-  description: null,
-  status: "todo",
-  priority: 3,
-  created_at: "2026-11-23T10:00:00Z",
-  updated_at: "2026-11-23T10:00:00Z",
-};
+const task = aTask({ title: "Water the ferns" });
 
 beforeEach(() => {
   api.use(

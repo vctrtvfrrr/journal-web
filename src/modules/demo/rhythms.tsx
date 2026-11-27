@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Checkbox } from "../../components/ui/checkbox";
-import { DemoRow, ModulePage } from "../demo-badge";
+import { ModulePage } from "../module-page";
+import { DemoRow } from "./demo-row";
 
 const habits = [
   { id: "run", title: "Run", goal: "4 times a week", done: 3, target: 4 },
@@ -47,7 +48,7 @@ export function Widget() {
 
 export function Page() {
   return (
-    <ModulePage title="Rhythms">
+    <ModulePage title="Rhythms" demo>
       <Habits showGoal />
     </ModulePage>
   );

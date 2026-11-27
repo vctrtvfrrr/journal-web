@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Fragment, useEffect, type ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Group, Panel, Separator, useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import { safeLocalStorage, useStoredSet } from "../lib/stored-state";
+import { usePanelCollapsed } from "../lib/use-panel-collapsed";
 import { cn } from "../lib/utils";
 import { DemoBadge } from "../modules/demo-badge";
-import type { ModuleId } from "../modules/registry";
+import type { DashboardModule, ModuleId } from "../modules/registry";
 
 export type StackSection = {
   id: string;
@@ -18,8 +19,17 @@ export type StackSection = {
 
 const HEADER_HEIGHT = "1.5rem";
 
+export function moduleSection(module: DashboardModule, activeModule?: ModuleId) {
+  return {
+    title: module.title,
+    demo: module.demo,
+    moduleHref: `/${module.id}`,
+    active: module.id === activeModule,
+  } satisfies Omit<StackSection, "id" | "content">;
+}
+
 export function SectionStack({ id, sections }: { id: string; sections: StackSection[] }) {
-  const [collapsed, setCollapsed] = useStoredSet(`journal-collapsed:${id}`);
+  const [collapsed, setMember] = useStoredSet(`journal-collapsed:${id}`);
   const layout = useDefaultLayout({ id: `journal-layout:${id}`, storage: safeLocalStorage });
 
   return (
@@ -31,11 +41,11 @@ export function SectionStack({ id, sections }: { id: string; sections: StackSect
     >
       {sections.map((section, index) => (
         <Fragment key={section.id}>
-          {index > 0 && <StackSeparator />}
+          {index > 0 && <StackSeparator between="sections" />}
           <StackPanel
             section={section}
             collapsed={collapsed.has(section.id)}
-            onCollapsedChange={(value) => setCollapsed(section.id, value)}
+            onCollapsedChange={(value) => setMember(section.id, value)}
           />
         </Fragment>
       ))}
@@ -43,16 +53,12 @@ export function SectionStack({ id, sections }: { id: string; sections: StackSect
   );
 }
 
-export function StackSeparator({
-  orientation = "vertical",
-}: {
-  orientation?: "vertical" | "horizontal";
-}) {
+export function StackSeparator({ between }: { between: "sections" | "columns" }) {
   return (
     <Separator
       className={cn(
-        "bg-border-strong outline-none data-[separator=hover]:bg-accent data-[separator=active]:bg-accent focus-visible:bg-accent",
-        orientation === "vertical" ? "h-px" : "w-px",
+        "bg-border-strong outline-none data-[separator=hover]:bg-accent data-[separator=active]:bg-accent focus-visible:bg-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent",
+        between === "sections" ? "h-px" : "w-px",
       )}
     />
   );
@@ -68,11 +74,7 @@ function StackPanel({
   onCollapsedChange: (collapsed: boolean) => void;
 }) {
   const panel = usePanelRef();
-
-  useEffect(() => {
-    if (collapsed) panel.current?.collapse();
-    else panel.current?.expand();
-  }, [collapsed]);
+  usePanelCollapsed(panel, collapsed);
 
   return (
     <Panel

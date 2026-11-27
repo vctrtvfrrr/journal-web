@@ -1,9 +1,9 @@
 import { useStoredSet } from "../lib/stored-state";
 import { MODULES } from "../modules/registry";
-import { SectionHeader } from "./section-stack";
+import { moduleSection, SectionHeader } from "./section-stack";
 
 export function WidgetList() {
-  const [collapsed, setCollapsed] = useStoredSet("journal-collapsed:mobile-widgets");
+  const [collapsed, setMember] = useStoredSet("journal-collapsed:mobile-widgets");
   return (
     <div className="grid content-start gap-2">
       {MODULES.map((module) => {
@@ -11,9 +11,9 @@ export function WidgetList() {
         return (
           <div key={module.id} className="border border-border">
             <SectionHeader
-              section={{ title: module.title, demo: module.demo, moduleHref: `/${module.id}` }}
+              section={moduleSection(module)}
               collapsed={isCollapsed}
-              onToggle={() => setCollapsed(module.id, !isCollapsed)}
+              onToggle={() => setMember(module.id, !isCollapsed)}
             />
             {!isCollapsed && (
               <div className="px-[1ch] py-2">

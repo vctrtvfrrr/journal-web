@@ -1,6 +1,7 @@
-import { DemoRow, ModulePage } from "../demo-badge";
+import { ModulePage } from "../module-page";
+import { DemoRow } from "./demo-row";
 
-const days = [
+export const days = [
   {
     label: "Today",
     events: [
@@ -44,7 +45,7 @@ export function Widget() {
 
 export function Page() {
   return (
-    <ModulePage title="Agenda">
+    <ModulePage title="Agenda" demo>
       <Days />
     </ModulePage>
   );

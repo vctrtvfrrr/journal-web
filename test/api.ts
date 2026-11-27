@@ -69,6 +69,19 @@ export function validationProblem(errors: ValidationProblem["errors"]) {
   });
 }
 
+export function aTask(overrides: Partial<Task>): Task {
+  return {
+    id: "0193b3a0-0000-7000-8000-000000000101",
+    title: "Read the journal",
+    description: null,
+    status: "todo",
+    priority: 3,
+    created_at: "2026-11-23T10:00:00Z",
+    updated_at: "2026-11-23T10:00:00Z",
+    ...overrides,
+  };
+}
+
 export function aNotebook(id: string, name: string): Notebook {
   return {
     id: `0193b3a0-0000-7000-8000-${id.padStart(12, "0")}`,

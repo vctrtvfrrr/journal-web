@@ -2,22 +2,14 @@ import { beforeEach, expect, test } from "bun:test";
 import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import type { Notebook, Task } from "./api/generated";
-import { aNotebook, api, device, problem } from "../test/api";
+import type { Notebook } from "./api/generated";
+import { aNotebook, aTask, api, device, problem } from "../test/api";
 import { renderAppAt } from "../test/render";
 import { setViewportWidth } from "../test/viewport";
 
 const diary = aNotebook("201", "Diary");
 const plants = aNotebook("202", "Plants");
-const task: Task = {
-  id: "0193b3a0-0000-7000-8000-000000000101",
-  title: "Water the ferns",
-  description: null,
-  status: "todo",
-  priority: 3,
-  created_at: "2026-11-23T10:00:00Z",
-  updated_at: "2026-11-23T10:00:00Z",
-};
+const task = aTask({ title: "Water the ferns" });
 
 function serveNotebooks(notebooks: Notebook[]) {
   api.use(http.get("/api/notebooks", () => HttpResponse.json(notebooks)));
