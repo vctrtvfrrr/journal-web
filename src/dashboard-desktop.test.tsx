@@ -91,6 +91,22 @@ test("Alt+number from a field in the same panel focuses the panel itself", async
   await waitFor(() => expect(document.activeElement?.getAttribute("data-panel")).toBe("tasks"));
 });
 
+test("Alt+number leaves a key that a panel already handled alone", async () => {
+  renderAppAt("/");
+  await userEvent.click(await screen.findByLabelText("Task title"));
+  const claimAlt2 = (event: KeyboardEvent) => {
+    if (event.altKey && event.code === "Digit2") event.preventDefault();
+  };
+  document.addEventListener("keydown", claimAlt2);
+
+  try {
+    await userEvent.keyboard("{Alt>}2{/Alt}");
+    expect(focusedPanel()).toBe("tasks");
+  } finally {
+    document.removeEventListener("keydown", claimAlt2);
+  }
+});
+
 test("Alt+number opens a closed sidebar to reach its panel", async () => {
   renderAppAt("/");
   await userEvent.click(await sidebarToggle("left"));

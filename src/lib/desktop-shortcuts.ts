@@ -45,6 +45,7 @@ export function useDesktopShortcuts({
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
+    if (event.defaultPrevented) return;
     if (isSidebarToggle(event)) {
       event.preventDefault();
       sidebars.toggle(event.altKey ? "right" : "left");

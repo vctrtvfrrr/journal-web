@@ -7,6 +7,8 @@ type PanelFocus = {
   settle: (panel: PanelId) => void;
 };
 
+const MODIFIERS = new Set(["Alt", "AltGraph", "Control", "Meta", "Shift"]);
+
 const PanelFocusContext = createContext<PanelFocus | undefined>(undefined);
 
 export function PanelFocusProvider({ children }: { children: ReactNode }) {
@@ -14,10 +16,13 @@ export function PanelFocusProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!pending) return;
     const cancel = () => setPending(undefined);
-    window.addEventListener("keydown", cancel, { capture: true, once: true });
+    const cancelUnlessModifier = (event: KeyboardEvent) => {
+      if (!MODIFIERS.has(event.key)) cancel();
+    };
+    window.addEventListener("keydown", cancelUnlessModifier, { capture: true });
     window.addEventListener("pointerdown", cancel, { capture: true, once: true });
     return () => {
-      window.removeEventListener("keydown", cancel, { capture: true });
+      window.removeEventListener("keydown", cancelUnlessModifier, { capture: true });
       window.removeEventListener("pointerdown", cancel, { capture: true });
     };
   }, [pending]);

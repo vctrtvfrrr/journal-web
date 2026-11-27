@@ -166,7 +166,8 @@ export function SectionHeader({
         "flex h-6 shrink-0 items-center gap-[1ch] border-b border-border bg-surface-2 px-[1ch] text-xs font-bold text-accent-ink uppercase",
         section.panel &&
           "group-focus-within/panel:border-b-accent group-focus-within/panel:shadow-[inset_0_-1px_0_var(--color-accent)]",
-        section.active && "bg-accent text-accent-foreground",
+        section.active &&
+          "bg-accent text-accent-foreground group-focus-within/panel:border-b-accent-foreground group-focus-within/panel:shadow-[inset_0_-2px_0_var(--color-accent-foreground)]",
       )}
     >
       <button
