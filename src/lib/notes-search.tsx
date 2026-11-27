@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { isEditable } from "./desktop-shortcuts";
+import { useNotebooks } from "./notebooks";
 import { isFiltering, NO_FILTERS, useTimelineFilters } from "./timeline-filters";
 
 type NotesSearch = {
@@ -23,6 +24,7 @@ const NotesSearchContext = createContext<NotesSearch | undefined>(undefined);
 export function NotesSearchProvider({ children }: { children: ReactNode }) {
   const [filters, applyFilters] = useTimelineFilters();
   const [opened, setOpened] = useState(false);
+  const searchable = (useNotebooks().data?.length ?? 0) > 0;
   const field = useRef<HTMLInputElement | null>(null);
   const focusOnMount = useRef(false);
 
@@ -41,11 +43,12 @@ export function NotesSearchProvider({ children }: { children: ReactNode }) {
 
   const close = () => {
     setOpened(false);
-    applyFilters(NO_FILTERS);
+    focusOnMount.current = false;
+    if (isFiltering(filters)) applyFilters(NO_FILTERS);
   };
 
   const openOnSlash = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== "/" || event.defaultPrevented) return;
+    if (event.key !== "/" || event.defaultPrevented || !searchable) return;
     // AltGr reaches the browser as Ctrl+Alt, and some layouts type "/" with it.
     if (event.metaKey || event.ctrlKey !== event.altKey) return;
     if (isEditable(event.target) || !event.currentTarget.contains(event.target as Node)) return;

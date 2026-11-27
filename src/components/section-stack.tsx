@@ -134,6 +134,7 @@ function leaveFieldOnEscape(event: KeyboardEvent<HTMLDivElement>) {
   const panel = event.currentTarget;
   if (event.key !== "Escape" || event.defaultPrevented || !isEditable(event.target)) return;
   if (!panel.contains(event.target as Node)) return;
+  event.preventDefault();
   panel.focus();
 }
 

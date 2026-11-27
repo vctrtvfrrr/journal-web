@@ -1,5 +1,5 @@
 import { beforeEach, expect, test } from "bun:test";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { Note, Task } from "./api/generated";
@@ -389,4 +389,55 @@ test("hides the search behind the same icon on mobile", async () => {
   await userEvent.keyboard("/");
 
   expect(document.activeElement).toBe(searchField());
+});
+
+test("Escape in the search keeps its text and the bar while returning to the panel", async () => {
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
+  const history = renderAppAt("/?q=quarto");
+
+  await timeline();
+  searchField().focus();
+  const notCancelled = fireEvent.keyDown(searchField(), { key: "Escape" });
+
+  expect(notCancelled).toBe(false);
+  expect(document.activeElement?.getAttribute("data-panel")).toBe("notes");
+  expect(searchField().value).toBe("quarto");
+  expect(history.location.search).toBe("?q=quarto");
+});
+
+test("closing an untouched search keeps the date jump", async () => {
+  serveNotes([aNote("1", "2026-11-24", "Painted the quarto"), aNote("2", "2022-03-02", "Old")]);
+  const history = renderAppAt("/?anchor=2022");
+
+  expect(await (await timeline()).findByText("Old")).toBeDefined();
+  await openSearch();
+  await userEvent.click(searchToggle());
+
+  expect(notes().queryByRole("search")).toBeNull();
+  expect(history.location.search).toBe("?anchor=2022");
+});
+
+test("slash before the notebooks load does nothing and never steals focus later", async () => {
+  serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
+  let release = () => {};
+  const loaded = new Promise<void>((resolve) => (release = resolve));
+  api.use(
+    http.get("/api/notebooks", async () => {
+      await loaded;
+      return HttpResponse.json([diary, plants]);
+    }),
+  );
+  renderAppAt("/");
+
+  await screen.findByRole("region", { name: "Notes" });
+  await userEvent.keyboard("{Alt>}2{/Alt}");
+  await waitFor(() => expect(document.activeElement?.getAttribute("data-panel")).toBe("notes"));
+  await userEvent.keyboard("/");
+  await userEvent.keyboard("{Alt>}1{/Alt}");
+  await waitFor(() => expect(document.activeElement?.getAttribute("data-panel")).toBe("tasks"));
+  release();
+
+  await timeline();
+  expect(notes().queryByRole("search")).toBeNull();
+  expect(document.activeElement?.getAttribute("data-panel")).toBe("tasks");
 });
