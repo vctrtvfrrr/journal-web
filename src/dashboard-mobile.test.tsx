@@ -46,6 +46,14 @@ test("the day summary on Tasks opens the Widgets tab with every widget in order"
   expect(screen.getAllByLabelText("Demo content")).toHaveLength(4);
 });
 
+test("does not number the widgets on mobile", async () => {
+  renderAppAt("/");
+  await userEvent.click(await screen.findByRole("tab", { name: "Widgets" }));
+
+  expect(screen.getByRole("button", { name: /^Weather/ })).toBeDefined();
+  expect(screen.queryByText(/\[\d\]/)).toBeNull();
+});
+
 test("collapsing a widget on mobile leaves the desktop layout alone", async () => {
   renderAppAt("/");
   await userEvent.click(await screen.findByRole("tab", { name: "Widgets" }));

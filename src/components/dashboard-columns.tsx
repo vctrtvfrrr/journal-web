@@ -123,6 +123,7 @@ function Sidebar({
             sections={modulesIn(side).map((module) => ({
               ...moduleSection(module, activeModule),
               id: module.id,
+              panel: module.id,
               content: <module.Widget />,
             }))}
           />

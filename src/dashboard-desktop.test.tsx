@@ -1,5 +1,5 @@
 import { beforeEach, expect, test } from "bun:test";
-import { cleanup, screen, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { aNotebook, aTask, api, device } from "../test/api";
@@ -43,6 +43,124 @@ test("puts a resizable separator between tasks and notes", async () => {
   const tasks = await screen.findByRole("region", { name: "Tasks" });
   const center = tasks.closest("[data-group]") as HTMLElement;
   expect(within(center).getAllByRole("separator")).toHaveLength(1);
+});
+
+test("numbers each section by importance before its title", async () => {
+  renderAppAt("/");
+  await sectionHeader("Weather");
+
+  const order = ["Tasks", "Notes", "Rhythms", "Finance", "Agenda", "Weather"];
+  for (const [index, name] of order.entries()) {
+    const header = await sectionHeader(name);
+    expect(header.textContent).toContain(`[${index + 1}]`);
+    expect(header.closest("[data-panel]")?.getAttribute("aria-keyshortcuts")).toBe(
+      `Alt+${index + 1}`,
+    );
+  }
+});
+
+function focusedPanel() {
+  return document.activeElement?.closest("[data-panel]")?.getAttribute("data-panel");
+}
+
+test("Alt+number focuses the numbered panel", async () => {
+  renderAppAt("/");
+  await sectionHeader("Weather");
+
+  await userEvent.keyboard("{Alt>}2{/Alt}");
+  await waitFor(() => expect(focusedPanel()).toBe("notes"));
+  await userEvent.keyboard("{Alt>}6{/Alt}");
+  await waitFor(() => expect(focusedPanel()).toBe("weather"));
+  await userEvent.keyboard("{Alt>}1{/Alt}");
+  await waitFor(() => expect(focusedPanel()).toBe("tasks"));
+});
+
+test("Alt+number works while typing", async () => {
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByLabelText("Task title"));
+  await userEvent.keyboard("{Alt>}2{/Alt}");
+  await waitFor(() => expect(focusedPanel()).toBe("notes"));
+});
+
+test("Alt+number from a field in the same panel focuses the panel itself", async () => {
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByLabelText("Task title"));
+  await userEvent.keyboard("{Alt>}1{/Alt}");
+  await waitFor(() => expect(document.activeElement?.getAttribute("data-panel")).toBe("tasks"));
+});
+
+test("Alt+number opens a closed sidebar to reach its panel", async () => {
+  renderAppAt("/");
+  await userEvent.click(await sidebarToggle("left"));
+  expect(screen.queryByRole("button", { name: /^Weather/i })).toBeNull();
+
+  await userEvent.keyboard("{Alt>}6{/Alt}");
+  await waitFor(() => expect(focusedPanel()).toBe("weather"));
+  expect((await sidebarToggle("left")).getAttribute("aria-pressed")).toBe("true");
+});
+
+test("Alt+number expands a collapsed section", async () => {
+  renderAppAt("/");
+  const notes = await sectionHeader("Notes");
+  await userEvent.click(notes);
+  expect(notes.getAttribute("aria-expanded")).toBe("false");
+
+  await userEvent.keyboard("{Alt>}2{/Alt}");
+  await waitFor(() => expect(focusedPanel()).toBe("notes"));
+  expect(notes.getAttribute("aria-expanded")).toBe("true");
+});
+
+test("Alt+1 leaves an open module for the tasks panel, Alt+3 keeps it open", async () => {
+  const history = renderAppAt("/weather");
+  await screen.findByRole("region", { name: "Weather" });
+
+  await userEvent.keyboard("{Alt>}3{/Alt}");
+  await waitFor(() => expect(focusedPanel()).toBe("rhythms"));
+  expect(history.location.pathname).toBe("/weather");
+
+  await userEvent.keyboard("{Alt>}1{/Alt}");
+  await waitFor(() => expect(history.location.pathname).toBe("/"));
+  await waitFor(() => expect(focusedPanel()).toBe("tasks"));
+});
+
+test("Alt+number does nothing while a dialog is open", async () => {
+  renderAppAt("/");
+  const newNote = await screen.findByRole("button", { name: "New note" });
+  await userEvent.click(newNote);
+  const dialog = await screen.findByRole("dialog", { name: "New note" });
+  await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+
+  await userEvent.keyboard("{Alt>}1{/Alt}");
+  expect(dialog.contains(document.activeElement)).toBe(true);
+
+  await userEvent.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await userEvent.keyboard("{Control>}b{/Control}");
+  expect((await sidebarToggle("left")).getAttribute("aria-pressed")).toBe("false");
+  expect(focusedPanel()).not.toBe("tasks");
+});
+
+test("Escape in a field returns focus to its panel and keeps what was typed", async () => {
+  renderAppAt("/");
+  const title = (await screen.findByLabelText("Task title")) as HTMLInputElement;
+  await userEvent.type(title, "Buy milk");
+
+  await userEvent.keyboard("{Escape}");
+  expect(document.activeElement?.getAttribute("data-panel")).toBe("tasks");
+  expect(title.value).toBe("Buy milk");
+});
+
+test("Escape in a dialog field closes only the dialog", async () => {
+  renderAppAt("/");
+  await userEvent.click(await screen.findByRole("button", { name: "New note" }));
+  const dialog = await screen.findByRole("dialog", { name: "New note" });
+  await userEvent.click(within(dialog).getByLabelText("Content"));
+
+  await userEvent.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(document.activeElement?.getAttribute("data-panel")).toBeNull();
 });
 
 function sidebarToggle(side: "left" | "right") {

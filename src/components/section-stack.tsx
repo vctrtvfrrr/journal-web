@@ -1,6 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { Fragment, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Group, Panel, Separator, useDefaultLayout, usePanelRef } from "react-resizable-panels";
+import { isEditable } from "../lib/desktop-shortcuts";
+import { usePanelFocus } from "../lib/panel-focus";
+import { panelNumber, type PanelId } from "../lib/panels";
 import { safeLocalStorage, useStoredSet } from "../lib/stored-state";
 import { usePanelCollapsed } from "../lib/use-panel-collapsed";
 import { cn } from "../lib/utils";
@@ -15,6 +25,7 @@ export type StackSection = {
   demo?: boolean;
   moduleHref?: `/${ModuleId}`;
   active?: boolean;
+  panel?: PanelId;
 };
 
 const HEADER_HEIGHT = "1.5rem";
@@ -75,6 +86,8 @@ function StackPanel({
 }) {
   const panel = usePanelRef();
   usePanelCollapsed(panel, collapsed);
+  const container = useRef<HTMLDivElement>(null);
+  useFocusRequest(section.panel, container, collapsed, () => onCollapsedChange(false));
 
   return (
     <Panel
@@ -90,7 +103,16 @@ function StackPanel({
         if (isCollapsed !== collapsed) onCollapsedChange(isCollapsed);
       }}
     >
-      <div className="flex h-full min-h-0 flex-col">
+      <div
+        ref={container}
+        className="group/panel flex h-full min-h-0 flex-col outline-none"
+        {...(section.panel && {
+          tabIndex: -1,
+          "data-panel": section.panel,
+          "aria-keyshortcuts": `Alt+${panelNumber(section.panel)}`,
+          onKeyDown: leaveFieldOnEscape,
+        })}
+      >
         <SectionHeader
           section={section}
           collapsed={collapsed}
@@ -102,6 +124,31 @@ function StackPanel({
       </div>
     </Panel>
   );
+}
+
+function leaveFieldOnEscape(event: KeyboardEvent<HTMLDivElement>) {
+  const panel = event.currentTarget;
+  if (event.key !== "Escape" || event.defaultPrevented || !isEditable(event.target)) return;
+  if (!panel.contains(event.target as Node)) return;
+  panel.focus();
+}
+
+function useFocusRequest(
+  panel: PanelId | undefined,
+  container: RefObject<HTMLDivElement | null>,
+  collapsed: boolean,
+  expand: () => void,
+) {
+  const focus = usePanelFocus();
+  const requested = panel !== undefined && focus?.pending === panel;
+  useEffect(() => {
+    if (!requested) return;
+    if (collapsed) return expand();
+    const element = container.current;
+    if (!element) return;
+    element.focus();
+    if (document.activeElement === element) focus.settle(panel);
+  });
 }
 
 export function SectionHeader({
@@ -117,6 +164,8 @@ export function SectionHeader({
     <div
       className={cn(
         "flex h-6 shrink-0 items-center gap-[1ch] border-b border-border bg-surface-2 px-[1ch] text-xs font-bold text-accent-ink uppercase",
+        section.panel &&
+          "group-focus-within/panel:border-b-accent group-focus-within/panel:shadow-[inset_0_-1px_0_var(--color-accent)]",
         section.active && "bg-accent text-accent-foreground",
       )}
     >
@@ -127,6 +176,7 @@ export function SectionHeader({
         onClick={onToggle}
       >
         <span aria-hidden>{collapsed ? "▸" : "▾"}</span>
+        {section.panel && <span aria-hidden>[{panelNumber(section.panel)}]</span>}
         <span className="truncate">{section.title}</span>
       </button>
       {section.demo && <DemoBadge />}

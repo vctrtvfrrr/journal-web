@@ -14,7 +14,9 @@ import { TaskList } from "../components/task-list";
 import { WidgetList } from "../components/widget-list";
 import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { useDesktopShortcuts } from "../lib/desktop-shortcuts";
 import { useNotebooks } from "../lib/notebooks";
+import { PanelFocusProvider } from "../lib/panel-focus";
 import { RevealNoteProvider, useRevealNote } from "../lib/reveal-note";
 import { useStoredState } from "../lib/stored-state";
 import { useSidebars } from "../lib/sidebars";
@@ -139,13 +141,14 @@ function MobileHome() {
 }
 
 const centerSections: StackSection[] = [
-  { id: "tasks", title: "Tasks", content: <TasksPanel />, defaultSize: "67%" },
-  { id: "notes", title: "Notes", content: <NotesPanel />, defaultSize: "33%" },
+  { id: "tasks", title: "Tasks", content: <TasksPanel />, defaultSize: "67%", panel: "tasks" },
+  { id: "notes", title: "Notes", content: <NotesPanel />, defaultSize: "33%", panel: "notes" },
 ];
 
 function DesktopHome() {
   const sidebars = useSidebars();
   const active = useActiveModule();
+  useDesktopShortcuts({ sidebars, activeModule: active });
   return (
     <JournalShell
       status={<SyncStatus />}
@@ -177,5 +180,15 @@ function DesktopHome() {
 
 export function HomePage() {
   const desktop = useMediaQuery("(min-width: 1024px)");
-  return <RevealNoteProvider>{desktop ? <DesktopHome /> : <MobileHome />}</RevealNoteProvider>;
+  return (
+    <RevealNoteProvider>
+      {desktop ? (
+        <PanelFocusProvider>
+          <DesktopHome />
+        </PanelFocusProvider>
+      ) : (
+        <MobileHome />
+      )}
+    </RevealNoteProvider>
+  );
 }
