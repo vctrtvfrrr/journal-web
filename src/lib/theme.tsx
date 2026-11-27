@@ -1,24 +1,18 @@
 import * as React from "react";
+import { useMediaQuery } from "./use-media-query";
 
 type Theme = "light" | "dark";
 
 type ThemeContextValue = {
   theme: Theme;
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
   crt: boolean;
   setCrt: (crt: boolean) => void;
 };
 
-const STORAGE_KEY = "journal-theme";
 const ThemeContext = React.createContext<ThemeContextValue | null>(null);
 
-function readInitialTheme(): Theme {
-  return document.documentElement.classList.contains("dark") ? "dark" : "light";
-}
-
 function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = React.useState<Theme>(readInitialTheme);
+  const theme: Theme = useMediaQuery("(prefers-color-scheme: dark)") ? "dark" : "light";
   const [crt, setCrt] = React.useState(false);
 
   React.useEffect(() => {
@@ -26,25 +20,13 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute("content", theme === "dark" ? "#0b0e14" : "#f8f9fa");
-    try {
-      localStorage.setItem(STORAGE_KEY, theme);
-    } catch {}
   }, [theme]);
 
   React.useEffect(() => {
     document.body.classList.toggle("crt", crt);
   }, [crt]);
 
-  const value = React.useMemo<ThemeContextValue>(
-    () => ({
-      theme,
-      setTheme,
-      toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
-      crt,
-      setCrt,
-    }),
-    [theme, crt],
-  );
+  const value = React.useMemo<ThemeContextValue>(() => ({ theme, crt, setCrt }), [theme, crt]);
 
   return <ThemeContext value={value}>{children}</ThemeContext>;
 }

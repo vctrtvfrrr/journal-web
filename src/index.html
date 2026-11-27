@@ -9,13 +9,10 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <title>Journal</title>
     <script>
-      try {
-        const stored = localStorage.getItem("journal-theme");
-        const dark = stored
-          ? stored === "dark"
-          : matchMedia("(prefers-color-scheme: dark)").matches;
-        document.documentElement.classList.toggle("dark", dark);
-      } catch {}
+      document.documentElement.classList.toggle(
+        "dark",
+        matchMedia("(prefers-color-scheme: dark)").matches,
+      );
     </script>
   </head>
   <body>
