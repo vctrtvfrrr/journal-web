@@ -1,6 +1,13 @@
 import { PanelLeft, PanelRight } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
-import { Group, Panel, useDefaultLayout, usePanelRef } from "react-resizable-panels";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import {
+  Group,
+  Panel,
+  useDefaultLayout,
+  useGroupRef,
+  usePanelRef,
+  type GroupImperativeHandle,
+} from "react-resizable-panels";
 import { safeLocalStorage, useStoredSet } from "../lib/stored-state";
 import { cn } from "../lib/utils";
 import { modulesIn, type ModuleId, type SideColumn } from "../modules/registry";
@@ -73,6 +80,68 @@ export function SidebarToggles({ sidebars }: { sidebars: Sidebars }) {
   );
 }
 
+const SIDES = ["left", "right"] as const;
+
+// The library shrinks the sidebars one after the other and may collapse one when the window
+// narrows. The spec wants them to shrink in proportion, down to their minimum, never close on
+// their own, and keep the widths the owner chose for when there is room again.
+function useFitColumns(
+  group: RefObject<GroupImperativeHandle | null>,
+  element: RefObject<HTMLDivElement | null>,
+  sidebars: Sidebars,
+) {
+  const latest = useRef(sidebars);
+  latest.current = sidebars;
+  const chosen = useRef<Partial<Record<SideColumn, number>>>({});
+
+  const measure = () => {
+    const root = element.current;
+    if (!group.current || !root || root.clientWidth === 0) return undefined;
+    const separators = [...root.querySelectorAll<HTMLElement>(":scope > [data-separator]")];
+    const total = root.clientWidth - separators.reduce((sum, el) => sum + el.offsetWidth, 0);
+    const layout = group.current.getLayout();
+    const px = (side: SideColumn) => ((layout[side] ?? 0) / 100) * total;
+    return { group: group.current, total, layout, px };
+  };
+
+  const remember = () => {
+    const now = measure();
+    if (!now) return;
+    for (const side of SIDES) if (now.px(side) > 0) chosen.current[side] = now.px(side);
+  };
+
+  const fit = () => {
+    const now = measure();
+    if (!now) return;
+    const width = { left: 0, right: 0 };
+    for (const side of SIDES) {
+      if (!latest.current.isOpen(side)) continue;
+      chosen.current[side] ??= now.px(side) || defaultSidebarWidth();
+      width[side] = Math.max(SIDEBAR_MIN_WIDTH, chosen.current[side]);
+    }
+    const room = now.total - CENTER_MIN_WIDTH;
+    const wanted = width.left + width.right;
+    if (wanted > room) {
+      for (const side of SIDES) {
+        if (width[side] > 0)
+          width[side] = Math.max(SIDEBAR_MIN_WIDTH, (width[side] * room) / wanted);
+      }
+    }
+    const percent = (px: number) => (px / now.total) * 100;
+    const next = {
+      left: percent(width.left),
+      right: percent(width.right),
+      center: 100 - percent(width.left + width.right),
+    };
+    const changed = (["left", "right", "center"] as const).some(
+      (id) => Math.abs((now.layout[id] ?? 0) - next[id]) > 0.1,
+    );
+    if (changed) now.group.setLayout(next);
+  };
+
+  return { fit, remember };
+}
+
 export function DashboardColumns({
   sidebars,
   center,
@@ -83,15 +152,28 @@ export function DashboardColumns({
   activeModule?: ModuleId;
 }) {
   const layout = useDefaultLayout({ id: "journal-layout:columns", storage: safeLocalStorage });
+  const group = useGroupRef();
+  const element = useRef<HTMLDivElement>(null);
+  const { fit, remember } = useFitColumns(group, element, sidebars);
+
+  useEffect(() => {
+    if (!element.current) return;
+    const observer = new ResizeObserver(fit);
+    observer.observe(element.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <Group
       className="h-full"
+      groupRef={group}
+      elementRef={element}
       defaultLayout={layout.defaultLayout}
       onLayoutChanged={(next, meta) => {
         layout.onLayoutChanged(next, meta);
-        if (!meta.isUserInteraction) return;
-        for (const side of ["left", "right"] as const) {
+        if (!meta.isUserInteraction) return fit();
+        remember();
+        for (const side of SIDES) {
           const open = (next[side] ?? 0) > 0;
           if (open !== sidebars.isOpen(side)) sidebars.setOpen(side, open);
         }

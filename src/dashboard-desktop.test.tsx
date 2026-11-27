@@ -112,8 +112,8 @@ test("ignores the sidebar shortcuts while typing", async () => {
 });
 
 test("falls back to the default layout when the stored one is broken", async () => {
-  localStorage.setItem("journal-layout:columns", "{not json");
-  localStorage.setItem("journal-layout:center", "[1,2");
+  localStorage.setItem("react-resizable-panels:journal-layout:columns", "{not json");
+  localStorage.setItem("react-resizable-panels:journal-layout:center", "[1,2");
   renderAppAt("/");
 
   expect((await sidebarToggle("left")).getAttribute("aria-pressed")).toBe("true");
