@@ -1,8 +1,9 @@
 import { useIsMutating, useQuery } from "@tanstack/react-query";
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { listTasksOptions } from "../api/generated/@tanstack/react-query.gen";
 import { ConnectedDevices } from "../components/connected-devices";
+import { DaySummary } from "../components/day-summary";
 import { DashboardColumns, SidebarToggles, useSidebars } from "../components/dashboard-columns";
 import { JournalShell } from "../components/journal-shell";
 import { LoadError } from "../components/load-error";
@@ -10,6 +11,7 @@ import { NotesPanel } from "../components/notes-panel";
 import { SectionStack, type StackSection } from "../components/section-stack";
 import { TaskCreateForm } from "../components/task-create-form";
 import { TaskList } from "../components/task-list";
+import { WidgetList } from "../components/widget-list";
 import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useNotebooks } from "../lib/notebooks";
@@ -62,33 +64,66 @@ function SyncStatus() {
   return <span className={failed ? "text-red-ink" : "text-green-ink"}>{status}</span>;
 }
 
+const mobileViews = ["widgets", "tasks", "notes"] as const;
+
 function MobileHome() {
   const [storedView, setView] = useStoredState<string>("journal-home-view", "tasks");
-  const view = storedView === "notes" ? "notes" : "tasks";
+  const view = mobileViews.find((name) => name === storedView) ?? "tasks";
+  const active = useActiveModule();
+  const navigate = useNavigate();
   const revealPending = useRevealNote().target !== undefined;
   useEffect(() => {
     if (revealPending) setView("notes");
   }, [revealPending]);
+  useEffect(() => {
+    if (active) setView("widgets");
+  }, [active]);
+
+  const chooseView = (next: string) => {
+    setView(next);
+    if (active) void navigate({ to: "/", search: (previous) => previous });
+  };
 
   return (
-    <Tabs value={view} onValueChange={setView} className="contents">
+    <Tabs value={view} onValueChange={chooseView} className="contents">
       <JournalShell
         status={<SyncStatus />}
         footerAction={<ConnectedDevices />}
+        breadcrumb={
+          active && (
+            <nav aria-label="Breadcrumb" className="flex items-center gap-[1ch] px-[1ch]">
+              <Link to="/" search={(previous) => previous} aria-label="Back">
+                ←
+              </Link>
+              <span>{active.title}</span>
+            </nav>
+          )
+        }
         tabBar={
           <TabsList aria-label="View" variant="group" className="px-[1ch]">
+            <TabsTrigger value="widgets">Widgets</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
         }
       >
-        <TabsContent value="tasks">
-          <TasksPanel />
-        </TabsContent>
-        <TabsContent value="notes">
-          <NotesPanel />
-        </TabsContent>
-        <Outlet />
+        {active ? (
+          <Outlet />
+        ) : (
+          <>
+            <TabsContent value="widgets">
+              <WidgetList />
+            </TabsContent>
+            <TabsContent value="tasks">
+              <DaySummary onOpen={() => setView("widgets")} />
+              <TasksPanel />
+            </TabsContent>
+            <TabsContent value="notes">
+              <NotesPanel />
+            </TabsContent>
+            <Outlet />
+          </>
+        )}
       </JournalShell>
     </Tabs>
   );

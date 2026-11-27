@@ -89,38 +89,56 @@ function StackPanel({
       }}
     >
       <div className="flex h-full min-h-0 flex-col">
-        <div
-          className={cn(
-            "flex h-6 shrink-0 items-center gap-[1ch] border-b border-border bg-surface-2 px-[1ch] text-xs font-bold text-accent-ink uppercase",
-            section.active && "bg-accent text-accent-foreground",
-          )}
-        >
-          <button
-            type="button"
-            aria-expanded={!collapsed}
-            className="flex min-w-0 flex-1 items-center gap-[1ch] text-left uppercase"
-            onClick={() => onCollapsedChange(!collapsed)}
-          >
-            <span aria-hidden>{collapsed ? "▸" : "▾"}</span>
-            <span className="truncate">{section.title}</span>
-          </button>
-          {section.demo && <DemoBadge />}
-          {section.moduleHref && (
-            <Link
-              to={section.moduleHref}
-              search={(previous) => previous}
-              aria-label={`Open ${section.title}`}
-              aria-current={section.active ? "page" : undefined}
-              className="font-normal"
-            >
-              ↗
-            </Link>
-          )}
-        </div>
+        <SectionHeader
+          section={section}
+          collapsed={collapsed}
+          onToggle={() => onCollapsedChange(!collapsed)}
+        />
         {!collapsed && (
           <div className="min-h-0 flex-1 overflow-y-auto px-[1ch] py-2">{section.content}</div>
         )}
       </div>
     </Panel>
+  );
+}
+
+export function SectionHeader({
+  section,
+  collapsed,
+  onToggle,
+}: {
+  section: Omit<StackSection, "id" | "content">;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex h-6 shrink-0 items-center gap-[1ch] border-b border-border bg-surface-2 px-[1ch] text-xs font-bold text-accent-ink uppercase",
+        section.active && "bg-accent text-accent-foreground",
+      )}
+    >
+      <button
+        type="button"
+        aria-expanded={!collapsed}
+        className="flex min-w-0 flex-1 items-center gap-[1ch] text-left uppercase"
+        onClick={onToggle}
+      >
+        <span aria-hidden>{collapsed ? "▸" : "▾"}</span>
+        <span className="truncate">{section.title}</span>
+      </button>
+      {section.demo && <DemoBadge />}
+      {section.moduleHref && (
+        <Link
+          to={section.moduleHref}
+          search={(previous) => previous}
+          aria-label={`Open ${section.title}`}
+          aria-current={section.active ? "page" : undefined}
+          className="font-normal"
+        >
+          ↗
+        </Link>
+      )}
+    </div>
   );
 }
