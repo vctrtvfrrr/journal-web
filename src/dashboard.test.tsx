@@ -95,7 +95,7 @@ test("says when there are no notebooks yet", async () => {
   renderAppAt("/");
 
   const notes = within(await screen.findByRole("region", { name: "Notes" }));
-  expect(await notes.findByText("No notebooks yet. Use + to add a note.")).toBeDefined();
+  expect(await notes.findByText("No notebooks yet. Use + to add a notebook.")).toBeDefined();
   expect(notes.queryByRole("tab")).toBeNull();
 });
 

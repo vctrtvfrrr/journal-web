@@ -129,18 +129,6 @@ test("creates a notebook from the picker when saving the note", async () => {
   ]);
 });
 
-test("asks for a notebook when there are none yet", async () => {
-  const requests = serveNotes([]);
-  renderAppAt("/");
-
-  const dialog = await openNewNote();
-  await userEvent.type(dialog.getByLabelText("Content"), "First note.");
-  await userEvent.click(dialog.getByRole("button", { name: "save" }));
-
-  expect(await dialog.findByText("Choose or create a notebook.", { exact: false })).toBeDefined();
-  expect(requests).toEqual([]);
-});
-
 test("shows a date the API rejects under the date field", async () => {
   serveNotes([diary]);
   api.use(

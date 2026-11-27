@@ -1,16 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import type { NoteInput } from "../api/generated";
-import {
-  createNotebookMutation,
-  listNotebooksQueryKey,
-} from "../api/generated/@tanstack/react-query.gen";
 import { zNoteInput } from "../api/generated/zod.gen";
 import { apiTrim } from "../lib/api-trim";
-import { useNotebooks } from "../lib/notebooks";
+import { useCreateNotebook, useNotebooks } from "../lib/notebooks";
 import { describeError, fieldErrors, isProblem, pointerField } from "../lib/problem";
 import { ErrorText, Field } from "./field";
 import { type NotebookChoice, NotebookPicker } from "./notebook-picker";
@@ -39,18 +34,13 @@ export function NoteForm({
   extraAction?: ReactNode;
 }) {
   const id = useId();
-  const queryClient = useQueryClient();
   const notebooks = useNotebooks();
   const current = notebooks.data?.find((notebook) => notebook.id === notebookId);
   const [picked, setChoice] = useState<NotebookChoice>();
   const choice = picked ?? current;
   const [notebookError, setNotebookError] = useState<string>();
   const [formError, setFormError] = useState<string>();
-  const createNotebook = useMutation({
-    ...createNotebookMutation(),
-    meta: { showsOwnError: true },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: listNotebooksQueryKey() }),
-  });
+  const createNotebook = useCreateNotebook();
   const form = useForm<NoteForm>({ resolver: zodResolver(noteForm), defaultValues });
   const { errors, isSubmitting } = form.formState;
 

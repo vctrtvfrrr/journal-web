@@ -7,75 +7,41 @@ import {
   updateNotebookMutation,
 } from "../api/generated/@tanstack/react-query.gen";
 import { zUpdateNotebookBody } from "../api/generated/zod.gen";
-import { apiTrim } from "../lib/api-trim";
 import { describeError, fieldError } from "../lib/problem";
 import { ConfirmDialog } from "./confirm-dialog";
+import { NotebookNameInput } from "./notebook-name-input";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from "./ui/context-menu";
-import { Input } from "./ui/input";
 import { TabsTrigger } from "./ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 function NotebookRename({ notebook, onDone }: { notebook: Notebook; onDone: () => void }) {
   const queryClient = useQueryClient();
-  const [error, setError] = useState<string>();
-  const finished = useRef(false);
   const rename = useMutation({
     ...updateNotebookMutation(),
     meta: { showsOwnError: true },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: listNotebooksQueryKey() }),
   });
 
-  const finish = () => {
-    finished.current = true;
-    onDone();
-  };
-
-  const save = async (value: string) => {
-    if (finished.current || rename.isPending) return;
-    const name = apiTrim(value);
-    if (name === notebook.name) return finish();
-    const parsed = zUpdateNotebookBody.safeParse({ name });
-    if (!parsed.success) return setError(parsed.error.issues[0]?.message);
-    try {
-      await rename.mutateAsync({ path: { id: notebook.id }, body: { name } });
-      finish();
-    } catch (failure) {
-      setError(fieldError(failure, "name") ?? describeError(failure));
-    }
-  };
-
   return (
-    <Tooltip open={!!error}>
-      <TooltipTrigger asChild>
-        <Input
-          aria-label="Notebook name"
-          aria-invalid={!!error}
-          defaultValue={notebook.name}
-          readOnly={rename.isPending}
-          autoFocus
-          onFocus={(event) => event.currentTarget.select()}
-          className="h-7 w-[22ch]"
-          onChange={() => setError(undefined)}
-          onBlur={(event) => void save(event.currentTarget.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void save(event.currentTarget.value);
-            }
-            if (event.key === "Escape") {
-              event.preventDefault();
-              finish();
-            }
-          }}
-        />
-      </TooltipTrigger>
-      <TooltipContent side="bottom">{error}</TooltipContent>
-    </Tooltip>
+    <NotebookNameInput
+      label="Notebook name"
+      defaultValue={notebook.name}
+      onDone={onDone}
+      onSave={async (name) => {
+        if (name === notebook.name) return;
+        const parsed = zUpdateNotebookBody.safeParse({ name });
+        if (!parsed.success) return parsed.error.issues[0]?.message ?? parsed.error.message;
+        try {
+          await rename.mutateAsync({ path: { id: notebook.id }, body: { name } });
+        } catch (failure) {
+          return fieldError(failure, "name") ?? describeError(failure);
+        }
+      }}
+    />
   );
 }
 

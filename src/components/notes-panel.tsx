@@ -5,10 +5,11 @@ import { useStoredState } from "../lib/stored-state";
 import { useTimelineAnchor } from "../lib/timeline-filters";
 import { LoadError } from "./load-error";
 import { Skeleton } from "./ui/skeleton";
-import { NewNoteDialog } from "./new-note-dialog";
+import { NotebookCreate } from "./notebook-create";
 import { NotebookTab } from "./notebook-tab";
 import { QuickNoteForm } from "./quick-note-form";
 import { NotesTimeline } from "./notes-timeline";
+import { TimelineFilterBar } from "./timeline-filter-bar";
 import { Tabs, TabsContent, TabsList } from "./ui/tabs";
 
 export function NotesPanel() {
@@ -37,7 +38,7 @@ export function NotesPanel() {
       {notebooks.isError && (
         <LoadError error={notebooks.error} onRetry={() => void notebooks.refetch()} />
       )}
-      {selected && <QuickNoteForm notebookId={selected.id} />}
+      {selected && <TimelineFilterBar />}
       {notebooks.data && (
         <Tabs value={selected?.id ?? ""} onValueChange={switchNotebook} className="gap-0">
           <div className="flex min-w-0 items-end shadow-[inset_0_-1px_0_0_var(--border-strong)]">
@@ -57,11 +58,12 @@ export function NotesPanel() {
               </TabsList>
             ) : (
               <p className="flex-1 self-center px-[1ch] text-muted-foreground">
-                No notebooks yet. Use + to add a note.
+                No notebooks yet. Use + to add a notebook.
               </p>
             )}
-            <NewNoteDialog notebookId={selected?.id} onCreated={setStoredId} />
+            <NotebookCreate onCreated={setStoredId} />
           </div>
+          {selected && <QuickNoteForm notebookId={selected.id} onNotebookCreated={setStoredId} />}
           {selected && (
             <TabsContent value={selected.id} className="min-w-0">
               <NotesTimeline key={selected.id} notebook={selected.id} />

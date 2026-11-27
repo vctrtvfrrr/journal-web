@@ -34,6 +34,33 @@ async function timeline(name = "Diary") {
   return within(await screen.findByRole("tabpanel", { name }));
 }
 
+function notes() {
+  return within(screen.getByRole("region", { name: "Notes" }));
+}
+
+test("puts the search above the notebook tabs, outside the timeline", async () => {
+  serveNotes([aNote("1", "2026-11-24", "Painted the quarto")]);
+  renderAppAt("/");
+
+  const panel = await timeline();
+  const search = notes().getByRole("search");
+  const tabs = notes().getByRole("tablist", { name: "Notebooks" });
+  expect(search.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(panel.queryByRole("search")).toBeNull();
+});
+
+test("hints the Partial Date format inside the date fields", async () => {
+  serveNotes([]);
+  renderAppAt("/");
+
+  await timeline();
+  for (const name of ["From", "To"])
+    expect(notes().getByRole("textbox", { name }).getAttribute("placeholder")).toBe(
+      "YYYY, YYYY-MM, …",
+    );
+  expect(notes().queryByText("YYYY, YYYY-MM, …")).toBeNull();
+});
+
 test("finds the notes that mention a text, ignoring case and accents", async () => {
   serveNotes([
     aNote("1", "2026-11-24", "Painted the Quarto"),
@@ -44,7 +71,7 @@ test("finds the notes that mention a text, ignoring case and accents", async () 
 
   const panel = await timeline();
   expect(await panel.findByText("Bought plants")).toBeDefined();
-  await userEvent.type(panel.getByRole("searchbox", { name: "Search notes" }), "quarto");
+  await userEvent.type(notes().getByRole("searchbox", { name: "Search notes" }), "quarto");
 
   await waitFor(() => expect(history.location.search).toBe("?q=quarto"));
   await waitFor(() => expect(panel.queryByText("Bought plants")).toBeNull());
@@ -64,8 +91,8 @@ test("keeps a coarse note in every range that overlaps its period", async () => 
   const history = renderAppAt("/");
 
   const panel = await timeline();
-  await userEvent.type(await panel.findByRole("textbox", { name: "From" }), "2025-05-10");
-  await userEvent.type(panel.getByRole("textbox", { name: "To" }), "2025-06-30");
+  await userEvent.type(await notes().findByRole("textbox", { name: "From" }), "2025-05-10");
+  await userEvent.type(notes().getByRole("textbox", { name: "To" }), "2025-06-30");
 
   await waitFor(() => expect(panel.queryByText("Before the range")).toBeNull());
   expect(panel.getByText("Last minute of June")).toBeDefined();
@@ -92,7 +119,7 @@ test("combines the text with the period and says when nothing matches", async ()
     "2025",
   ]);
 
-  await userEvent.type(panel.getByRole("searchbox", { name: "Search notes" }), "s");
+  await userEvent.type(notes().getByRole("searchbox", { name: "Search notes" }), "s");
 
   expect(await panel.findByText("No notes match these filters.")).toBeDefined();
 });
@@ -102,10 +129,10 @@ test("shows a malformed date and an inverted range in the filter bar without app
   const history = renderAppAt("/");
 
   const panel = await timeline();
-  const from = await panel.findByRole("textbox", { name: "From" });
-  const to = panel.getByRole("textbox", { name: "To" });
+  const from = await notes().findByRole("textbox", { name: "From" });
+  const to = notes().getByRole("textbox", { name: "To" });
   await userEvent.type(from, "25-03");
-  expect(panel.getByText("✗ Use a Partial Date such as 2025-03.")).toBeDefined();
+  expect(notes().getByText("✗ Use a Partial Date such as 2025-03.")).toBeDefined();
   expect(from.getAttribute("aria-invalid")).toBe("true");
 
   await userEvent.clear(from);
@@ -113,12 +140,12 @@ test("shows a malformed date and an inverted range in the filter bar without app
   await userEvent.click(to);
   await userEvent.paste("2025-02");
 
-  expect(panel.getByText("✗ The range ends before it starts.")).toBeDefined();
+  expect(notes().getByText("✗ The range ends before it starts.")).toBeDefined();
   await waitFor(() => expect(history.location.search).toBe("?from=2025-03"));
   expect(panel.getByText("Painted the quarto")).toBeDefined();
 });
 
-test("shows a search the API rejects in the filter bar and keeps the timeline", async () => {
+test("shows a search the API rejects at the top of the timeline and keeps the notes", async () => {
   api.use(
     http.get("/api/notes", ({ request }) =>
       new URL(request.url).searchParams.has("from")
@@ -133,11 +160,10 @@ test("shows a search the API rejects in the filter bar and keeps the timeline", 
 
   const panel = await timeline();
   expect(await panel.findByText("Painted the quarto")).toBeDefined();
-  await userEvent.type(panel.getByRole("textbox", { name: "From" }), "2025-02-30");
+  await userEvent.type(notes().getByRole("textbox", { name: "From" }), "2025-02-30");
 
-  const search = within(panel.getByRole("search"));
   expect(
-    await search.findByText(
+    await panel.findByText(
       "✗ The from query parameter must be a Partial Date that exists, such as 2025-03.",
     ),
   ).toBeDefined();
@@ -155,7 +181,7 @@ test("keeps the filters across a note dialog, the back button, a reload and a no
   const history = renderAppAt("/?q=quarto");
 
   let panel = await timeline();
-  expect(panel.getByRole<HTMLInputElement>("searchbox", { name: "Search notes" }).value).toBe(
+  expect(notes().getByRole<HTMLInputElement>("searchbox", { name: "Search notes" }).value).toBe(
     "quarto",
   );
   await userEvent.click(await panel.findByRole("button", { name: "Painted the quarto" }));
@@ -210,11 +236,11 @@ test("clears every filter at once", async () => {
 
   const panel = await timeline();
   expect(await panel.findByText("Painted the quarto")).toBeDefined();
-  await userEvent.click(panel.getByRole("button", { name: "clear filters" }));
+  await userEvent.click(notes().getByRole("button", { name: "clear filters" }));
 
   expect(await panel.findByText("Old")).toBeDefined();
   expect(history.location.search).toBe("");
-  expect(panel.getByRole<HTMLInputElement>("searchbox", { name: "Search notes" }).value).toBe("");
-  expect(panel.getByRole<HTMLInputElement>("textbox", { name: "From" }).value).toBe("");
+  expect(notes().getByRole<HTMLInputElement>("searchbox", { name: "Search notes" }).value).toBe("");
+  expect(notes().getByRole<HTMLInputElement>("textbox", { name: "From" }).value).toBe("");
   expect(panel.getByText("(root) beginning of notebook · 2 notes")).toBeDefined();
 });

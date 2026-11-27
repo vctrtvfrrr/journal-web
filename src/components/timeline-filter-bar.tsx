@@ -1,7 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { zListNotesQuery, zPartialDateBound } from "../api/generated/zod.gen";
 import { periodEnd, periodStart } from "../lib/partial-date";
-import { describeError } from "../lib/problem";
 import { isFiltering, useTimelineFilters } from "../lib/timeline-filters";
 import { ErrorText, Field } from "./field";
 import { Button } from "./ui/button";
@@ -31,7 +30,7 @@ function rangeError(range: Range) {
   return isInverted(range) ? "The range ends before it starts." : undefined;
 }
 
-export function TimelineFilterBar({ searchError }: { searchError?: unknown }) {
+export function TimelineFilterBar() {
   const id = useId();
   const [filters, applyFilters] = useTimelineFilters();
   const [text, setText] = useState(filters.q ?? "");
@@ -72,29 +71,29 @@ export function TimelineFilterBar({ searchError }: { searchError?: unknown }) {
   };
 
   return (
-    <div role="search" className="grid gap-2 py-2">
-      <Field label="Search" htmlFor={`${id}-q`}>
-        <Input
-          id={`${id}-q`}
-          type="search"
-          aria-label="Search notes"
-          autoComplete="off"
-          maxLength={SEARCH_MAX_LENGTH}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-        />
-      </Field>
-      <div className="grid grid-cols-2 gap-[1ch]">
+    <div role="search" className="grid gap-2">
+      <div className="grid grid-cols-2 gap-x-[1ch] gap-y-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <Field label="Search" htmlFor={`${id}-q`} className="col-span-2 lg:col-span-1">
+          <Input
+            id={`${id}-q`}
+            type="search"
+            aria-label="Search notes"
+            autoComplete="off"
+            maxLength={SEARCH_MAX_LENGTH}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+        </Field>
         {(["from", "to"] as const).map((bound) => (
           <Field
             key={bound}
             label={BOUND_LABELS[bound]}
             htmlFor={`${id}-${bound}`}
-            hint={DATE_HINT}
             error={isDateBound(range[bound]) ? undefined : "Use a Partial Date such as 2025-03."}
           >
             <Input
               id={`${id}-${bound}`}
+              placeholder={DATE_HINT}
               aria-invalid={!isDateBound(range[bound]) || !!invertedRange}
               autoComplete="off"
               value={range[bound]}
@@ -104,7 +103,6 @@ export function TimelineFilterBar({ searchError }: { searchError?: unknown }) {
         ))}
       </div>
       {invertedRange && <ErrorText>{invertedRange}</ErrorText>}
-      {searchError !== undefined && <ErrorText>{describeError(searchError)}</ErrorText>}
       {(text || range.from || range.to || isFiltering(filters)) && (
         <Button
           type="button"

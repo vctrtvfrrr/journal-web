@@ -13,14 +13,14 @@ import {
   type TimelineRow,
 } from "../lib/timeline";
 import { periodStart } from "../lib/partial-date";
-import { isProblem } from "../lib/problem";
+import { describeError, isProblem } from "../lib/problem";
 import { cn } from "../lib/utils";
+import { ErrorText } from "./field";
 import { LoadError } from "./load-error";
 import { Markdown } from "./markdown";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import { Spinner } from "./ui/spinner";
-import { TimelineFilterBar } from "./timeline-filter-bar";
 
 const laneLine = "absolute left-[calc(1ch-0.5px)] w-px bg-border-strong";
 const groupColor = { year: "text-yellow-ink", month: "text-cyan-ink", day: "text-blue-ink" };
@@ -243,7 +243,7 @@ export function NotesTimeline({ notebook }: { notebook: string }) {
 
   return (
     <>
-      <TimelineFilterBar searchError={rejected ? timeline.error : undefined} />
+      {rejected && <ErrorText>{describeError(timeline.error)}</ErrorText>}
       <TimelineResults
         notebook={notebook}
         timeline={timeline}

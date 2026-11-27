@@ -2,7 +2,7 @@ import { beforeEach, expect, test } from "bun:test";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import type { Notebook, NotebookChanges } from "./api/generated";
+import type { Notebook, NotebookChanges, NotebookInput } from "./api/generated";
 import { aNotebook, api, device, problem } from "../test/api";
 import { renderAppAt } from "../test/render";
 
@@ -14,8 +14,16 @@ function serveEditableNotebooks(initial: Notebook[]) {
   let notebooks = initial;
   const renames: NotebookChanges[] = [];
   const deleted: string[] = [];
+  const created: NotebookInput[] = [];
   api.use(
     http.get("/api/notebooks", () => HttpResponse.json(notebooks)),
+    http.post<never, NotebookInput>("/api/notebooks", async ({ request }) => {
+      const input = await request.json();
+      created.push(input);
+      const notebook = { ...college, name: input.name };
+      notebooks = [...notebooks, notebook];
+      return HttpResponse.json(notebook, { status: 201 });
+    }),
     http.patch<{ id: string }, NotebookChanges>(
       "/api/notebooks/:id",
       async ({ params, request }) => {
@@ -35,7 +43,7 @@ function serveEditableNotebooks(initial: Notebook[]) {
       return new HttpResponse(null, { status: 204 });
     }),
   );
-  return { renames, deleted };
+  return { renames, deleted, created };
 }
 
 beforeEach(() => {
@@ -122,4 +130,66 @@ test("offers rename from the tab menu too", async () => {
   await userEvent.click(await screen.findByRole("menuitem", { name: "Rename" }));
 
   expect(screen.getByRole("textbox", { name: "Notebook name" })).toBeDefined();
+});
+
+test("adds a notebook from the + button and selects it", async () => {
+  const { created } = serveEditableNotebooks([diary, plants]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("button", { name: "New notebook" }));
+  await userEvent.type(
+    screen.getByRole("textbox", { name: "New notebook name" }),
+    "  Recipes {Enter}",
+  );
+
+  expect(await notebookTabs().findByRole("tab", { name: "Recipes", selected: true })).toBeDefined();
+  expect(screen.queryByRole("textbox", { name: "New notebook name" })).toBeNull();
+  expect(created).toEqual([{ name: "Recipes" }]);
+});
+
+test("cancels a new notebook with Escape or by leaving the field empty", async () => {
+  const { created } = serveEditableNotebooks([diary]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("button", { name: "New notebook" }));
+  await userEvent.type(
+    screen.getByRole("textbox", { name: "New notebook name" }),
+    "Recipes{Escape}",
+  );
+  expect(screen.queryByRole("textbox", { name: "New notebook name" })).toBeNull();
+
+  await userEvent.click(screen.getByRole("button", { name: "New notebook" }));
+  await userEvent.click(screen.getByRole("tab", { name: "Diary" }));
+  expect(screen.queryByRole("textbox", { name: "New notebook name" })).toBeNull();
+  expect(created).toEqual([]);
+});
+
+test("keeps the new notebook field open with the reason when the API rejects it", async () => {
+  serveEditableNotebooks([diary]);
+  api.use(
+    http.post("/api/notebooks", () => problem(409, "A notebook named Diary already exists.")),
+  );
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("button", { name: "New notebook" }));
+  const name = screen.getByRole("textbox", { name: "New notebook name" });
+  await userEvent.type(name, "Diary{Enter}");
+
+  expect(
+    (await screen.findAllByText("A notebook named Diary already exists.")).length,
+  ).toBeGreaterThan(0);
+  expect(name.getAttribute("aria-invalid")).toBe("true");
+  expect((name as HTMLInputElement).value).toBe("Diary");
+});
+
+test("creates the first notebook when there are none yet", async () => {
+  const { created } = serveEditableNotebooks([]);
+  renderAppAt("/");
+
+  await screen.findByText("No notebooks yet. Use + to add a notebook.");
+  await userEvent.click(screen.getByRole("button", { name: "New notebook" }));
+  await userEvent.type(screen.getByRole("textbox", { name: "New notebook name" }), "Diary{Enter}");
+
+  expect(await screen.findByRole("tab", { name: "Diary", selected: true })).toBeDefined();
+  expect(created).toEqual([{ name: "Diary" }]);
 });

@@ -41,24 +41,79 @@ function notes() {
   return within(screen.getByRole("region", { name: "Notes" }));
 }
 
-test("adds a note to the selected notebook at the current minute with Ctrl+Enter", async () => {
+test("adds a note to the selected notebook at the current minute with Enter", async () => {
   const created = serveNoteCreation();
   renderAppAt("/");
 
   await userEvent.click(await screen.findByRole("tab", { name: "Plants" }));
   const field = notes().getByRole("textbox", { name: "Quick note" });
-  await userEvent.type(field, "  Repotted the **fern**.{Enter}Roots were fine.  ");
-  expect(created).toEqual([]);
-  await userEvent.keyboard("{Control>}{Enter}{/Control}");
+  await userEvent.type(field, "  Repotted the **fern**.  {Enter}");
 
-  await waitFor(() => expect((field as HTMLTextAreaElement).value).toBe(""));
+  await waitFor(() => expect((field as HTMLInputElement).value).toBe(""));
+  expect(created).toEqual([
+    { notebook_id: plants.id, content: "Repotted the **fern**.", date: "2026-11-24T15:35" },
+  ]);
+});
+
+test("also adds the quick note with Ctrl+Enter", async () => {
+  const created = serveNoteCreation();
+  renderAppAt("/");
+
+  const field = await screen.findByRole("textbox", { name: "Quick note" });
+  await userEvent.type(field, "Watered the fern{Control>}{Enter}{/Control}");
+
+  await waitFor(() => expect(created.map(({ content }) => content)).toEqual(["Watered the fern"]));
+});
+
+test("puts the quick note below the notebook tabs", async () => {
+  renderAppAt("/");
+
+  const field = await screen.findByRole("textbox", { name: "Quick note" });
+  const tabs = notes().getByRole("tablist", { name: "Notebooks" });
+  expect(tabs.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("opens the full note form with the draft from the quick note button", async () => {
+  const created = serveNoteCreation();
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("tab", { name: "Plants" }));
+  const field = notes().getByRole("textbox", { name: "Quick note" });
+  await userEvent.type(field, "Repotted the fern.");
+  await userEvent.click(notes().getByRole("button", { name: "New note" }));
+
+  const dialog = within(await screen.findByRole("dialog", { name: "New note" }));
+  const content = dialog.getByLabelText("Content") as HTMLTextAreaElement;
+  expect(content.value).toBe("Repotted the fern.");
+  expect(dialog.getByRole("combobox", { name: "Notebook" }).textContent).toContain("Plants");
+  expect((dialog.getByLabelText("Date") as HTMLInputElement).value).toBe("2026-11-24T15:35");
+  await userEvent.type(content, "{Enter}Roots were fine.");
+  await userEvent.click(dialog.getByRole("button", { name: "save" }));
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(created).toEqual([
     {
       notebook_id: plants.id,
-      content: "Repotted the **fern**.\nRoots were fine.",
+      content: "Repotted the fern.\nRoots were fine.",
       date: "2026-11-24T15:35",
     },
   ]);
+  expect((field as HTMLInputElement).value).toBe("");
+});
+
+test("keeps the quick note draft when the full note form is cancelled", async () => {
+  const created = serveNoteCreation();
+  renderAppAt("/");
+
+  const field = await screen.findByRole("textbox", { name: "Quick note" });
+  await userEvent.type(field, "Half a thought");
+  await userEvent.click(notes().getByRole("button", { name: "New note" }));
+  const dialog = within(await screen.findByRole("dialog", { name: "New note" }));
+  await userEvent.click(dialog.getByRole("button", { name: "cancel" }));
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect((field as HTMLInputElement).value).toBe("Half a thought");
+  expect(created).toEqual([]);
 });
 
 test("shows a rejected quick note under the field and keeps the draft", async () => {
@@ -70,12 +125,12 @@ test("shows a rejected quick note under the field and keeps the draft", async ()
   renderAppAt("/");
 
   const field = await screen.findByRole("textbox", { name: "Quick note" });
-  await userEvent.type(field, "Too long{Control>}{Enter}{/Control}");
+  await userEvent.type(field, "Too long{Enter}");
 
   expect(
     await notes().findByText("Must be at most 10000 characters.", { exact: false }),
   ).toBeDefined();
-  expect((field as HTMLTextAreaElement).value).toBe("Too long");
+  expect((field as HTMLInputElement).value).toBe("Too long");
 });
 
 test("does not send an empty quick note", async () => {
@@ -83,7 +138,7 @@ test("does not send an empty quick note", async () => {
   renderAppAt("/");
 
   const field = await screen.findByRole("textbox", { name: "Quick note" });
-  await userEvent.type(field, "   {Control>}{Enter}{/Control}");
+  await userEvent.type(field, "   {Enter}");
 
   expect(created).toEqual([]);
 });
@@ -92,6 +147,6 @@ test("hides the quick note when there are no notebooks", async () => {
   api.use(http.get("/api/notebooks", () => HttpResponse.json([])));
   renderAppAt("/");
 
-  await screen.findByText("No notebooks yet. Use + to add a note.");
+  await screen.findByText("No notebooks yet. Use + to add a notebook.");
   expect(screen.queryByRole("textbox", { name: "Quick note" })).toBeNull();
 });
