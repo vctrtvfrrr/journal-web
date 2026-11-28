@@ -29,6 +29,7 @@ import {
 import { toast } from "../components/ui/sonner";
 import { describeError, fieldError, isUnauthorized } from "./problem";
 import type { TaskNode, TaskTree } from "./task-tree";
+import { cn } from "./utils";
 
 type Target = string | null;
 
@@ -227,11 +228,12 @@ export function TopLevelDropZone() {
     <div
       ref={droppable.setNodeRef}
       aria-hidden
-      className={
+      className={cn(
+        "absolute inset-x-0 -top-3 z-10 flex h-6 items-center justify-center border text-xs",
         targeted
-          ? "border-b border-accent bg-accent/15 px-[1ch] py-0.5 text-accent-ink"
-          : "border-b border-dashed border-border px-[1ch] py-0.5 text-muted-foreground"
-      }
+          ? "border-accent bg-accent/25 text-accent-ink"
+          : "border-dashed border-border-strong bg-surface text-muted-foreground",
+      )}
     >
       ↑ top level
     </div>
