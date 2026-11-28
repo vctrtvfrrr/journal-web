@@ -2,6 +2,7 @@ import {
   DndContext,
   DragOverlay,
   MouseSensor,
+  pointerWithin,
   TouchSensor,
   useDraggable,
   useDroppable,
@@ -33,7 +34,7 @@ type ParentId = string | null;
 const TOP_LEVEL_DROP_ID = "top-level";
 const parentOfDropId = (dropId: string): ParentId => (dropId === TOP_LEVEL_DROP_ID ? null : dropId);
 
-type KeyboardMove = { task: Task; targets: ParentId[]; index: number };
+type KeyboardMove = { task: Task; row: HTMLElement; targets: ParentId[]; index: number };
 
 type MoveState = {
   tree: TaskTree;
@@ -41,7 +42,7 @@ type MoveState = {
   keyboardTarget: ParentId | undefined;
   movingId: string | undefined;
   canDrop: (target: ParentId) => boolean;
-  startKeyboardMove: (task: Task) => void;
+  startKeyboardMove: (task: Task, row: HTMLElement) => void;
   swallowClickAfterDrag: (event: MouseEvent) => void;
 };
 
@@ -89,11 +90,11 @@ function useKeyboardMove(
 ) {
   const [keyboardMove, setKeyboardMove] = useState<KeyboardMove>();
 
-  const start = (task: Task) => {
+  const start = (task: Task, row: HTMLElement) => {
     const visible = visiblePendingInTreeOrder(tree.pending, isCollapsed).map(({ id }) => id);
     const targets = [null, ...visible].filter((target) => tree.canMove(task.id, target));
     const index = Math.max(0, targets.indexOf(task.parent_id));
-    setKeyboardMove({ task, targets, index });
+    setKeyboardMove({ task, row, targets, index });
     announce(`${describeParentId(tree, task, targets[index] ?? null)} ${keyboardHelp}`);
   };
 
@@ -124,15 +125,25 @@ function useKeyboardMove(
         announce("Move cancelled.");
       },
     };
+    const { row } = keyboardMove;
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       const handle = keys[event.key];
-      if (!handle) return;
+      if (!handle || !row.contains(document.activeElement)) return;
       event.preventDefault();
       event.stopPropagation();
       handle(event);
     };
+    const onFocusOut = (event: FocusEvent) => {
+      if (row.contains(event.relatedTarget as Node | null)) return;
+      setKeyboardMove(undefined);
+      announce("Move cancelled.");
+    };
     window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+    row.addEventListener("focusout", onFocusOut);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
+      row.removeEventListener("focusout", onFocusOut);
+    };
   }, [keyboardMove, tree, drop, announce]);
 
   return { keyboardMove, start };
@@ -190,6 +201,7 @@ export function TaskMoveProvider({
     <MoveContext value={moveState}>
       <DndContext
         sensors={sensors}
+        collisionDetection={pointerWithin}
         onDragStart={({ active }) => setDragging(tree.node(String(active.id))?.task)}
         onDragCancel={() => setDragging(undefined)}
         onDragEnd={({ active, over }) => {
@@ -258,11 +270,11 @@ export function useRowMove(task: Task) {
       droppable.setNodeRef(element);
     },
     listeners: draggable.listeners,
-    onKeyDown: (event: KeyboardEvent) => {
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
       const plain = !event.ctrlKey && !event.metaKey && !event.altKey;
       if (event.key !== "m" || !plain || moveState.movingId || isTyping(event.target)) return;
       event.preventDefault();
-      moveState.startKeyboardMove(task);
+      moveState.startKeyboardMove(task, event.currentTarget);
     },
     onClickCapture: moveState.swallowClickAfterDrag,
     moving: moveState.movingId === task.id,

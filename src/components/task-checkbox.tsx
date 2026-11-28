@@ -43,28 +43,45 @@ function useTaskStatus(task: Task) {
   });
 }
 
+type Completion = { task: Task; saved?: Task };
+
 function useCompleteTasks() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationKey: statusMutationKey,
     meta: { showsOwnError: true },
-    mutationFn: async (ids: string[]) => {
-      const results = await Promise.allSettled(
-        ids.map((id) => updateTask({ path: { id }, body: { status: "done" }, throwOnError: true })),
-      );
-      const failure = results.find((result) => result.status === "rejected");
-      if (failure) throw failure.reason;
-    },
-    onMutate: async (ids) => {
+    mutationFn: (tasks: Task[]) =>
+      Promise.all(
+        tasks.map(({ id }) =>
+          updateTask({ path: { id }, body: { status: "done" } }).then(({ data }) => data),
+        ),
+      ),
+    onMutate: async (tasks) => {
+      const ids = tasks.map(({ id }) => id);
       await cancelTaskQueries(queryClient, ids);
       patchCachedTasks(queryClient, ids, { status: "done", updated_at: new Date().toISOString() });
     },
-    onError: (error) => {
-      if (!isUnauthorized(error))
-        toast.error("Couldn't complete every task.", { description: describeError(error) });
+    onSuccess: (saved, tasks) => {
+      const completions: Completion[] = tasks.map((task, index) => ({ task, saved: saved[index] }));
+      for (const { task, saved } of completions)
+        patchCachedTasks(queryClient, [task.id], saved ?? task);
+      const failed = completions.filter(({ saved }) => !saved).map(({ task }) => task.title);
+      if (failed.length > 0)
+        toast.error("Couldn't complete every task.", {
+          description: `Still pending: ${failed.join(", ")}.`,
+        });
     },
-    onSettled: (_data, _error, ids) => refreshTasks(queryClient, ids),
+    onError: (error, tasks) => {
+      for (const task of tasks) patchCachedTasks(queryClient, [task.id], task);
+      if (!isUnauthorized(error))
+        toast.error("Couldn't complete the tasks.", { description: describeError(error) });
+    },
+    onSettled: (_data, _error, tasks) =>
+      refreshTasks(
+        queryClient,
+        tasks.map(({ id }) => id),
+      ),
   });
 }
 
@@ -142,7 +159,7 @@ export function TaskCheckbox({ task }: { task: Task }) {
           }}
           onAll={() => {
             setPendingToConfirm(undefined);
-            completeAll.mutate([task.id, ...pendingToConfirm.map((subtask) => subtask.id)]);
+            completeAll.mutate([task, ...pendingToConfirm]);
           }}
         />
       )}

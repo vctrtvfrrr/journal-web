@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { Task, TaskChanges } from "./api/generated";
-import { aTask, api, device } from "../test/api";
+import { aTask, api, device, problem } from "../test/api";
 import { renderAppAt } from "../test/render";
 
 const move = aTask({ id: "0193b3a0-0000-7000-8000-000000000201", title: "Move out", priority: 1 });
@@ -271,7 +271,7 @@ async function pickUp(title: string) {
 }
 
 function announced() {
-  return screen.getByRole("status", { name: "Move task" }).textContent;
+  return document.querySelector('[role="status"][aria-label="Move task"]')?.textContent;
 }
 
 test("moves a task under any other task with the keyboard", async () => {
@@ -365,4 +365,67 @@ test("skips the tasks inside a collapsed task when moving with the keyboard", as
   await userEvent.keyboard("{ArrowDown}{ArrowDown}");
 
   expect(announced()).toContain('Move "Renew passport" to the top level');
+});
+
+test("waits for the subtasks before it lets a task be deleted", async () => {
+  let releaseList = () => {};
+  const listReady = new Promise<void>((resolve) => (releaseList = resolve));
+  api.use(
+    http.get("/api/tasks", async () => {
+      await listReady;
+      return HttpResponse.json([move, freight]);
+    }),
+    http.get("/api/tasks/:id", () => HttpResponse.json(move)),
+  );
+  renderAppAt(`/tasks/${move.id}`);
+
+  await userEvent.click(await screen.findByRole("button", { name: "Delete Move out" }));
+  expect(screen.getByRole("button", { name: "delete task" }).hasAttribute("disabled")).toBe(true);
+
+  releaseList();
+
+  expect(await screen.findByText("Delete this task and its 1 subtask?")).toBeDefined();
+  expect(screen.getByRole("button", { name: "delete task" }).hasAttribute("disabled")).toBe(false);
+});
+
+test("cancels a keyboard move when the focus leaves the task", async () => {
+  const patches = servePatches([{ ...move }, { ...passport }]);
+  renderAppAt("/");
+
+  await pickUp("Renew passport");
+  await userEvent.click(screen.getByRole("button", { name: "Move out" }));
+  const dialog = within(await screen.findByRole("dialog"));
+  dialog.getByRole("button", { name: "Delete Move out" }).focus();
+  await userEvent.keyboard("{Enter}");
+
+  expect(announced()).toContain("Move cancelled");
+  expect(patches).toEqual([]);
+});
+
+test("keeps a subtask pending when completing it failed, even if the list cannot reload", async () => {
+  const tasks = [working(move), { ...freight }];
+  let listLoads = 0;
+  api.use(
+    http.get("/api/tasks", () =>
+      listLoads++ === 0 ? HttpResponse.json(tasks) : problem(503, "Down for maintenance."),
+    ),
+    http.patch("/api/tasks/:id", ({ params }) =>
+      params.id === move.id
+        ? HttpResponse.json({ ...move, status: "done" })
+        : problem(503, "Down for maintenance."),
+    ),
+  );
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Move out: doing" }));
+  await userEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", { name: "all" }),
+  );
+
+  expect(
+    await screen.findByText(/Hire freight/, { selector: "[data-sonner-toast] *" }),
+  ).toBeDefined();
+  await userEvent.click(screen.getByRole("button", { name: /completed$/ }));
+  expect(screen.getByRole("checkbox", { name: "Hire freight: todo" })).toBeDefined();
+  expect(screen.getByRole("checkbox", { name: "Move out: done" })).toBeDefined();
 });

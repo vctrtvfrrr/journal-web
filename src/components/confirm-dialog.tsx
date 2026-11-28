@@ -22,6 +22,7 @@ export function ConfirmDialog({
   confirmLabel,
   status,
   onConfirm,
+  confirmDisabled = false,
   children,
 }: {
   open: boolean;
@@ -32,6 +33,7 @@ export function ConfirmDialog({
   confirmLabel: string;
   status: ConfirmStatus;
   onConfirm: () => void;
+  confirmDisabled?: boolean;
   children?: ReactNode;
 }) {
   const change = (next: boolean) => {
@@ -60,7 +62,7 @@ export function ConfirmDialog({
           <Button
             type="button"
             variant="destructive"
-            disabled={status.isPending}
+            disabled={status.isPending || confirmDisabled}
             onClick={onConfirm}
           >
             {confirmLabel}
