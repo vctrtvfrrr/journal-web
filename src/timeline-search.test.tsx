@@ -242,6 +242,7 @@ test("keeps the filters across a task dialog", async () => {
   serveNotes([aNote("1", "2025-03-02", "Painted the quarto")]);
   const task = {
     id: "0193b3a0-0000-7000-8000-000000000101",
+    parent_id: null,
     title: "Pay rent",
     description: null,
     status: "todo",

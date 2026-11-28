@@ -72,6 +72,7 @@ export function validationProblem(errors: ValidationProblem["errors"]) {
 export function aTask(overrides: Partial<Task>): Task {
   return {
     id: "0193b3a0-0000-7000-8000-000000000101",
+    parent_id: null,
     title: "Read the journal",
     description: null,
     status: "todo",
