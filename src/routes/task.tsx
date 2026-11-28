@@ -1,13 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import type { Task } from "../api/generated";
 import {
   getTaskOptions,
   getTaskQueryKey,
+  listTasksOptions,
   listTasksQueryKey,
   updateTaskMutation,
 } from "../api/generated/@tanstack/react-query.gen";
@@ -15,7 +16,9 @@ import { zTaskChanges } from "../api/generated/zod.gen";
 import { ErrorText, Field } from "../components/field";
 import { Markdown } from "../components/markdown";
 import { TaskCheckbox } from "../components/task-checkbox";
+import { TaskCreateForm } from "../components/task-create-form";
 import { TaskDelete } from "../components/task-delete";
+import { TaskSubtasks } from "../components/task-list";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import {
@@ -31,6 +34,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { toast } from "../components/ui/sonner";
 import { activationHandlers } from "../lib/activation";
 import { apiTrim } from "../lib/api-trim";
+import { MAX_DEPTH, taskTree, type TaskTree } from "../lib/task-tree";
 import { describeError, fieldErrors, isProblem, pointerField } from "../lib/problem";
 import { cn } from "../lib/utils";
 
@@ -197,19 +201,56 @@ function TaskPriority({ task }: { task: Task }) {
   );
 }
 
+function ParentTrail({ parents }: { parents: Task[] }) {
+  if (parents.length === 0) return null;
+  return (
+    <nav aria-label="Parent tasks" className="flex min-w-0 flex-wrap gap-[1ch] text-sm">
+      {parents.map((parent) => (
+        <span key={parent.id} className="flex min-w-0 gap-[1ch]">
+          <Link
+            to="/tasks/$taskId"
+            params={{ taskId: parent.id }}
+            search={(previous) => previous}
+            className="wrap-anywhere text-muted-foreground hover:text-accent-ink"
+          >
+            {parent.title}
+          </Link>
+          <span aria-hidden className="text-muted-foreground">
+            ›
+          </span>
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+function TaskSubtaskSection({ task, tree }: { task: Task; tree: TaskTree }) {
+  const node = tree.node(task.id);
+  if (!node) return null;
+  return (
+    <section aria-label="Subtasks" className="grid gap-1">
+      <TaskSubtasks node={node} />
+      {node.depth < MAX_DEPTH && <TaskCreateForm parentId={task.id} />}
+    </section>
+  );
+}
+
 function TaskDetails({
   task,
+  tree,
   editing,
   onEdit,
   onClose,
 }: {
   task: Task;
+  tree: TaskTree | undefined;
   editing: TaskField | undefined;
   onEdit: (field: TaskField | undefined) => void;
   onClose: () => void;
 }) {
   return (
     <div className="grid gap-3">
+      {tree && <ParentTrail parents={tree.ancestors(task.id)} />}
       <div className="flex items-start gap-[1ch]">
         <TaskCheckbox task={task} />
         <div className="grid min-w-0 flex-1 gap-1">
@@ -232,6 +273,7 @@ function TaskDetails({
         </div>
       </div>
       <TaskPriority task={task} />
+      {tree && !editing && <TaskSubtaskSection task={task} tree={tree} />}
       {!editing && (
         <DialogFooter className="flex-row">
           <TaskDelete task={task} onDeleted={onClose} className="ml-auto" />
@@ -252,6 +294,8 @@ export function TaskPage() {
     initialData: () =>
       queryClient.getQueryData<Task[]>(listTasksQueryKey())?.find(({ id }) => id === taskId),
   });
+  const tasks = useQuery({ ...listTasksOptions(), meta: { handledByRoute: true } });
+  const tree = useMemo(() => tasks.data && taskTree(tasks.data), [tasks.data]);
   const close = () => void navigate({ to: "/" });
 
   useEffect(() => {
@@ -281,7 +325,13 @@ export function TaskPage() {
           </Alert>
         )}
         {task.data && (
-          <TaskDetails task={task.data} editing={editing} onEdit={setEditing} onClose={close} />
+          <TaskDetails
+            task={task.data}
+            tree={tree}
+            editing={editing}
+            onEdit={setEditing}
+            onClose={close}
+          />
         )}
       </DialogContent>
     </Dialog>

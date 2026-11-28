@@ -304,7 +304,7 @@ test("shows the task rendered in a dialog opened from the title", async () => {
   expect(dialog.getByText("Dune").tagName).toBe("STRONG");
   expect(dialog.getByRole("heading", { name: "Plan" })).toBeDefined();
   expect(dialog.getByRole("listitem").textContent).toBe("one chapter a day");
-  expect(dialog.queryByRole("textbox")).toBeNull();
+  expect(dialog.queryByLabelText("Title")).toBeNull();
 });
 
 test("edits the title in place and stays on the task after saving", async () => {
@@ -320,7 +320,7 @@ test("edits the title in place and stays on the task after saving", async () => 
   await userEvent.click(dialog.getByRole("button", { name: "save" }));
 
   expect(await dialog.findByRole("button", { name: "Pay the rent" })).toBeDefined();
-  expect(dialog.queryByRole("textbox")).toBeNull();
+  expect(dialog.queryByLabelText("Title")).toBeNull();
   expect(history.location.pathname).toBe(`/tasks/${urgent.id}`);
   const list = await screen.findByRole("list", { name: "Pending tasks", hidden: true });
   expect(within(list).getByText("Pay the rent")).toBeDefined();
@@ -379,7 +379,7 @@ test("opens links in the description in a new tab without starting to edit", asy
   link.addEventListener("click", (event) => event.preventDefault());
   await userEvent.click(link);
 
-  expect(dialog.queryByRole("textbox")).toBeNull();
+  expect(dialog.queryByLabelText("Title")).toBeNull();
 });
 
 test("edits a completed task from its title", async () => {

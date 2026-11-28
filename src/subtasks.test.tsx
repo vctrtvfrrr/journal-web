@@ -83,3 +83,111 @@ test("collapses and expands the subtasks of a task", async () => {
   expect(screen.getByRole("button", { name: "Kitchen" })).toBeDefined();
   expect(screen.queryByRole("button", { name: "Subtasks of Renew passport" })).toBeNull();
 });
+
+function serveTree(tasks: Task[]) {
+  serveTasks(tasks);
+  api.use(
+    http.get("/api/tasks/:id", ({ params }) =>
+      HttpResponse.json(tasks.find((task) => task.id === params.id)),
+    ),
+  );
+}
+
+test("lists the subtasks in the dialog, opens one, and shows its parents", async () => {
+  serveTree([move, freight, pack, kitchen, passport]);
+  const history = renderAppAt(`/tasks/${move.id}`);
+
+  const dialog = within(await screen.findByRole("dialog"));
+  await userEvent.click(
+    within(await dialog.findByRole("list", { name: "Subtasks of Move out" })).getByRole("button", {
+      name: "Kitchen",
+    }),
+  );
+
+  expect(history.location.pathname).toBe(`/tasks/${kitchen.id}`);
+  const parents = within(await screen.findByRole("navigation", { name: "Parent tasks" }));
+  expect(parents.getAllByRole("link").map((link) => link.textContent)).toEqual([
+    "Move out",
+    "Pack",
+  ]);
+
+  await userEvent.click(parents.getByRole("link", { name: "Pack" }));
+
+  expect(history.location.pathname).toBe(`/tasks/${pack.id}`);
+  history.back();
+  await screen.findByRole("navigation", { name: "Parent tasks" });
+  expect(history.location.pathname).toBe(`/tasks/${kitchen.id}`);
+});
+
+test("adds a subtask from the dialog of its parent", async () => {
+  const tasks = [move, passport];
+  let sent: unknown;
+  serveTree(tasks);
+  api.use(
+    http.post("/api/tasks", async ({ request }) => {
+      sent = await request.json();
+      const created = aTask({
+        id: "0193b3a0-0000-7000-8000-000000000299",
+        title: "Book truck",
+        parent_id: move.id,
+      });
+      tasks.push(created);
+      return HttpResponse.json(created, { status: 201 });
+    }),
+  );
+  renderAppAt(`/tasks/${move.id}`);
+
+  const dialog = within(await screen.findByRole("dialog"));
+  await userEvent.type(
+    await dialog.findByRole("textbox", { name: "Subtask title" }),
+    " Book truck {Enter}",
+  );
+
+  expect(sent).toEqual({ title: "Book truck", parent_id: move.id });
+  expect(
+    await within(await dialog.findByRole("list", { name: "Subtasks of Move out" })).findByRole(
+      "button",
+      { name: "Book truck" },
+    ),
+  ).toBeDefined();
+});
+
+test("does not offer a subtask on the fourth level", async () => {
+  const fourth = aTask({
+    id: "0193b3a0-0000-7000-8000-000000000207",
+    title: "Plates",
+    parent_id: kitchen.id,
+  });
+  serveTree([move, pack, kitchen, fourth]);
+  renderAppAt(`/tasks/${fourth.id}`);
+
+  await screen.findByRole("navigation", { name: "Parent tasks" });
+  expect(screen.queryByRole("textbox", { name: "Subtask title" })).toBeNull();
+});
+
+test("shows why the API refused a new subtask", async () => {
+  serveTree([move]);
+  api.use(
+    http.post("/api/tasks", () =>
+      HttpResponse.json(
+        {
+          type: "about:blank",
+          title: "Unprocessable Content",
+          status: 422,
+          detail: "The parent Task cannot be used.",
+          errors: [{ pointer: "#/parent_id", detail: "Tasks nest up to four levels deep." }],
+        },
+        { status: 422, headers: { "content-type": "application/problem+json" } },
+      ),
+    ),
+  );
+  renderAppAt(`/tasks/${move.id}`);
+
+  const dialog = within(await screen.findByRole("dialog"));
+  await userEvent.type(
+    await dialog.findByRole("textbox", { name: "Subtask title" }),
+    "Deep{Enter}",
+  );
+
+  expect(await dialog.findByText(/Tasks nest up to four levels deep/)).toBeDefined();
+});

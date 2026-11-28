@@ -13,7 +13,7 @@ import { PromptInput } from "./ui/input";
 
 const titleForm = zCreateTaskBody.pick({ title: true });
 
-export function TaskCreateForm() {
+export function TaskCreateForm({ parentId }: { parentId?: string }) {
   const id = useId();
   const queryClient = useQueryClient();
   const create = useMutation({
@@ -30,30 +30,32 @@ export function TaskCreateForm() {
 
   const submit = form.handleSubmit(async ({ title }) => {
     try {
-      await create.mutateAsync({ body: { title } });
+      await create.mutateAsync({ body: parentId ? { title, parent_id: parentId } : { title } });
       form.reset();
     } catch (failure) {
-      form.setError("title", { message: fieldError(failure, "title") ?? describeError(failure) });
+      const message =
+        fieldError(failure, "title") ?? fieldError(failure, "parent_id") ?? describeError(failure);
+      form.setError("title", { message });
     }
   });
 
   return (
     <form className="mb-2 flex min-w-0 items-start gap-[1ch]" onSubmit={submit} noValidate>
       <Field
-        label="Task title"
+        label={parentId ? "Subtask title" : "Task title"}
         htmlFor={id}
         error={error}
         className="min-w-0 flex-1 [&_label]:sr-only"
       >
         <PromptInput
           id={id}
-          placeholder="Add a task..."
+          placeholder={parentId ? "Add a subtask..." : "Add a task..."}
           readOnly={busy}
           aria-invalid={!!error}
           {...form.register("title", { setValueAs: apiTrim })}
         />
       </Field>
-      <Button type="submit" aria-label="Add task" disabled={busy}>
+      <Button type="submit" aria-label={parentId ? "Add subtask" : "Add task"} disabled={busy}>
         <span aria-hidden>+</span> add
       </Button>
     </form>

@@ -272,3 +272,15 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
     </CollapsedContext>
   );
 }
+
+export function TaskSubtasks({ node }: { node: TaskNode }) {
+  const collapsed = useCollapsedState();
+  if (node.pending.length + node.completed.length === 0) return null;
+  return (
+    <CollapsedContext value={collapsed}>
+      <div className="min-w-0 border border-border">
+        <TaskLevel level={node} parent={node} />
+      </div>
+    </CollapsedContext>
+  );
+}
