@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { plural } from "../lib/plural";
 import { taskTree } from "../lib/task-tree";
 import { useState } from "react";
 import type { Task } from "../api/generated";
@@ -49,7 +50,7 @@ export function TaskDelete({
       description={
         subtasks === 0
           ? "Remove this task from your list?"
-          : `Delete this task and its ${subtasks} ${subtasks === 1 ? "subtask" : "subtasks"}?`
+          : `Delete this task and its ${plural(subtasks, "subtask")}?`
       }
       confirmLabel="delete task"
       status={remove}

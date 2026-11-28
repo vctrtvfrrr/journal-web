@@ -61,7 +61,7 @@ test("lists pending tasks with priority, status and description, and hides compl
   );
   expect(screen.queryByText("Buy milk")).toBeNull();
 
-  await userEvent.click(screen.getByRole("button", { name: /^completed/ }));
+  await userEvent.click(screen.getByRole("button", { name: /completed$/ }));
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
   expect(completed.getByRole("checkbox", { name: "Buy milk: done" })).toBeDefined();
 });
@@ -129,7 +129,7 @@ test("lists completed tasks by most recently updated first", async () => {
   ]);
   renderAppAt("/");
 
-  await userEvent.click(await screen.findByRole("button", { name: /^completed/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /completed$/ }));
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
   expect(rowTitles(completed)).toEqual(["Return books", "Fix the bike", "Renew passport"]);
 });
@@ -222,7 +222,7 @@ test("cycles the status from todo to doing to done before the API answers", asyn
 
   answer();
   await waitFor(() => expect(patches).toEqual([{ status: "doing" }, { status: "done" }]));
-  await userEvent.click(screen.getByRole("button", { name: /^completed/ }));
+  await userEvent.click(screen.getByRole("button", { name: /completed$/ }));
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
   await userEvent.click(completed.getByRole("checkbox", { name: "Read a chapter: done" }));
   expect(await pendingListFound("Read a chapter")).toBeDefined();
@@ -241,7 +241,7 @@ test("puts a task completed just now at the top of the completed list before the
   renderAppAt("/");
 
   await userEvent.click(await screen.findByRole("checkbox", { name: "Write a letter: doing" }));
-  await userEvent.click(screen.getByRole("button", { name: /^completed/ }));
+  await userEvent.click(screen.getByRole("button", { name: /completed$/ }));
 
   const completed = within(screen.getByRole("list", { name: "Completed tasks" }));
   expect(rowTitles(completed)).toEqual(["Write a letter", "Buy milk"]);
@@ -386,7 +386,7 @@ test("edits a completed task from its title", async () => {
   const patches = serveEditableTasks([finished]);
   const history = renderAppAt("/");
 
-  await userEvent.click(await screen.findByRole("button", { name: /^completed/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /completed$/ }));
   await userEvent.click(screen.getByRole("button", { name: "Buy milk" }));
   const dialog = within(await screen.findByRole("dialog", { name: "Task" }));
   expect(history.location.pathname).toBe(`/tasks/${finished.id}`);

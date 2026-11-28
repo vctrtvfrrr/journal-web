@@ -15,45 +15,48 @@ import {
   type MouseEvent,
   type ReactNode,
   useContext,
+  useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import type { Task } from "../api/generated";
-import {
-  getTaskQueryKey,
-  listTasksQueryKey,
-  updateTaskMutation,
-} from "../api/generated/@tanstack/react-query.gen";
-import { toast } from "../components/ui/sonner";
-import { describeError, fieldError, isUnauthorized } from "./problem";
-import type { TaskNode, TaskTree } from "./task-tree";
-import { cn } from "./utils";
+import { updateTaskMutation } from "../api/generated/@tanstack/react-query.gen";
+import { describeError, fieldError, isUnauthorized } from "../lib/problem";
+import { refreshTasks } from "../lib/task-cache";
+import type { TaskNode, TaskTree } from "../lib/task-tree";
+import { cn } from "../lib/utils";
+import { toast } from "./ui/sonner";
 
-type Target = string | null;
+type ParentId = string | null;
 
-const TOP_LEVEL = "top-level";
+const TOP_LEVEL_DROP_ID = "top-level";
+const parentOfDropId = (dropId: string): ParentId => (dropId === TOP_LEVEL_DROP_ID ? null : dropId);
 
-type KeyboardMove = { task: Task; targets: Target[]; index: number };
+type KeyboardMove = { task: Task; targets: ParentId[]; index: number };
 
-type Move = {
+type MoveState = {
   tree: TaskTree;
   dragging: Task | undefined;
-  keyboardTarget: Target | undefined;
+  keyboardTarget: ParentId | undefined;
   movingId: string | undefined;
-  canDrop: (target: Target) => boolean;
+  canDrop: (target: ParentId) => boolean;
   startKeyboardMove: (task: Task) => void;
   swallowClickAfterDrag: (event: MouseEvent) => void;
 };
 
-const MoveContext = createContext<Move | undefined>(undefined);
+const MoveContext = createContext<MoveState | undefined>(undefined);
 
-function pendingInTreeOrder(nodes: TaskNode[]): Task[] {
-  return nodes.flatMap((node) => [node.task, ...pendingInTreeOrder(node.pending)]);
+type IsCollapsed = (id: string) => boolean;
+
+function visiblePendingInTreeOrder(nodes: TaskNode[], isCollapsed: IsCollapsed): Task[] {
+  return nodes.flatMap((node) => [
+    node.task,
+    ...(isCollapsed(node.task.id) ? [] : visiblePendingInTreeOrder(node.pending, isCollapsed)),
+  ]);
 }
 
-function describeTarget(tree: TaskTree, task: Task, target: Target) {
+function describeParentId(tree: TaskTree, task: Task, target: ParentId) {
   const into = target === null ? undefined : tree.node(target)?.task.title;
   return into === undefined
     ? `Move "${task.title}" to the top level.`
@@ -65,73 +68,59 @@ const keyboardHelp =
 
 function useMoveTask() {
   const queryClient = useQueryClient();
-  const listKey = listTasksQueryKey();
-  const setParent = (id: string, parentId: Target) =>
-    queryClient.setQueryData<Task[]>(listKey, (tasks) =>
-      tasks?.map((task) => (task.id === id ? { ...task, parent_id: parentId } : task)),
-    );
-
   return useMutation({
     ...updateTaskMutation(),
     meta: { showsOwnError: true },
-    onMutate: async ({ path, body }) => {
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient
-        .getQueryData<Task[]>(listKey)
-        ?.find((task) => task.id === path.id)?.parent_id;
-      setParent(path.id, body.parent_id ?? null);
-      return previous;
-    },
-    onError: (error, { path }, previous) => {
-      if (previous !== undefined) setParent(path.id, previous);
+    onError: (error) => {
       if (!isUnauthorized(error))
         toast.error("Couldn't move task.", {
           description: fieldError(error, "parent_id") ?? describeError(error),
         });
     },
-    onSettled: (_data, _error, { path }) => {
-      void queryClient.invalidateQueries({ queryKey: listKey });
-      void queryClient.invalidateQueries({ queryKey: getTaskQueryKey({ path }) });
-    },
+    onSettled: (_data, _error, { path }) => refreshTasks(queryClient, [path.id]),
   });
 }
 
 function useKeyboardMove(
   tree: TaskTree,
-  drop: (task: Task, target: Target) => void,
+  isCollapsed: IsCollapsed,
+  drop: (task: Task, target: ParentId) => void,
   announce: (message: string) => void,
 ) {
-  const [move, setMove] = useState<KeyboardMove>();
+  const [keyboardMove, setKeyboardMove] = useState<KeyboardMove>();
 
   const start = (task: Task) => {
-    const targets = [null, ...pendingInTreeOrder(tree.pending).map(({ id }) => id)].filter(
-      (target) => tree.canMove(task.id, target),
-    );
+    const visible = visiblePendingInTreeOrder(tree.pending, isCollapsed).map(({ id }) => id);
+    const targets = [null, ...visible].filter((target) => tree.canMove(task.id, target));
     const index = Math.max(0, targets.indexOf(task.parent_id));
-    setMove({ task, targets, index });
-    announce(`${describeTarget(tree, task, targets[index] ?? null)} ${keyboardHelp}`);
+    setKeyboardMove({ task, targets, index });
+    announce(`${describeParentId(tree, task, targets[index] ?? null)} ${keyboardHelp}`);
   };
 
   useEffect(() => {
-    if (!move) return;
+    if (!keyboardMove) return;
     const select = (index: number) => {
-      const wrapped = (index + move.targets.length) % move.targets.length;
-      setMove({ ...move, index: wrapped });
-      announce(describeTarget(tree, move.task, move.targets[wrapped] ?? null));
+      const wrapped = (index + keyboardMove.targets.length) % keyboardMove.targets.length;
+      setKeyboardMove({ ...keyboardMove, index: wrapped });
+      announce(describeParentId(tree, keyboardMove.task, keyboardMove.targets[wrapped] ?? null));
     };
-    const parent = move.task.parent_id ? tree.node(move.task.parent_id)?.task : undefined;
+    const parent = keyboardMove.task.parent_id
+      ? tree.node(keyboardMove.task.parent_id)?.task
+      : undefined;
     const keys: Record<string, (event: globalThis.KeyboardEvent) => void> = {
-      ArrowDown: () => select(move.index + 1),
-      ArrowUp: () => select(move.index - 1),
+      ArrowDown: () => select(keyboardMove.index + 1),
+      ArrowUp: () => select(keyboardMove.index - 1),
       Tab: (event) => {
-        if (event.shiftKey && parent) select(move.targets.indexOf(parent.parent_id));
+        const grandparent =
+          event.shiftKey && parent ? keyboardMove.targets.indexOf(parent.parent_id) : -1;
+        if (grandparent !== -1) select(grandparent);
       },
       Enter: () => {
-        setMove(undefined);
-        drop(move.task, move.targets[move.index] ?? null);
+        setKeyboardMove(undefined);
+        drop(keyboardMove.task, keyboardMove.targets[keyboardMove.index] ?? null);
       },
       Escape: () => {
-        setMove(undefined);
+        setKeyboardMove(undefined);
         announce("Move cancelled.");
       },
     };
@@ -144,12 +133,20 @@ function useKeyboardMove(
     };
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [move, tree, drop, announce]);
+  }, [keyboardMove, tree, drop, announce]);
 
-  return { move, start };
+  return { keyboardMove, start };
 }
 
-export function TaskMoveProvider({ tree, children }: { tree: TaskTree; children: ReactNode }) {
+export function TaskMoveProvider({
+  tree,
+  isCollapsed,
+  children,
+}: {
+  tree: TaskTree;
+  isCollapsed: IsCollapsed;
+  children: ReactNode;
+}) {
   const moveTask = useMoveTask();
   const [message, setMessage] = useState("");
   const [dragging, setDragging] = useState<Task>();
@@ -159,26 +156,27 @@ export function TaskMoveProvider({ tree, children }: { tree: TaskTree; children:
     useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 6 } }),
   );
 
-  const drop = useMemo(
-    () => (task: Task, target: Target) => {
-      if (task.parent_id === target || !tree.canMove(task.id, target)) {
+  const { mutate } = moveTask;
+  const drop = useCallback(
+    (task: Task, parentId: ParentId) => {
+      if (task.parent_id === parentId || !tree.canMove(task.id, parentId)) {
         setMessage("Move cancelled.");
         return;
       }
       setMessage(`Moved "${task.title}".`);
-      moveTask.mutate({ path: { id: task.id }, body: { parent_id: target } });
+      mutate({ path: { id: task.id }, body: { parent_id: parentId } });
     },
-    [tree, moveTask],
+    [tree, mutate],
   );
-  const keyboard = useKeyboardMove(tree, drop, setMessage);
+  const keyboard = useKeyboardMove(tree, isCollapsed, drop, setMessage);
 
-  const context: Move = {
+  const moveState: MoveState = {
     tree,
     dragging,
-    keyboardTarget: keyboard.move
-      ? (keyboard.move.targets[keyboard.move.index] ?? null)
+    keyboardTarget: keyboard.keyboardMove
+      ? (keyboard.keyboardMove.targets[keyboard.keyboardMove.index] ?? null)
       : undefined,
-    movingId: dragging?.id ?? keyboard.move?.task.id,
+    movingId: dragging?.id ?? keyboard.keyboardMove?.task.id,
     canDrop: (target) => !!dragging && tree.canMove(dragging.id, target),
     startKeyboardMove: keyboard.start,
     swallowClickAfterDrag: (event) => {
@@ -189,7 +187,7 @@ export function TaskMoveProvider({ tree, children }: { tree: TaskTree; children:
   };
 
   return (
-    <MoveContext value={context}>
+    <MoveContext value={moveState}>
       <DndContext
         sensors={sensors}
         onDragStart={({ active }) => setDragging(tree.node(String(active.id))?.task)}
@@ -199,7 +197,7 @@ export function TaskMoveProvider({ tree, children }: { tree: TaskTree; children:
           justDragged.current = true;
           setTimeout(() => (justDragged.current = false));
           const task = tree.node(String(active.id))?.task;
-          if (task && over) drop(task, over.id === TOP_LEVEL ? null : String(over.id));
+          if (task && over) drop(task, parentOfDropId(String(over.id)));
         }}
       >
         {children}
@@ -219,11 +217,11 @@ export function TaskMoveProvider({ tree, children }: { tree: TaskTree; children:
 }
 
 export function TopLevelDropZone() {
-  const move = useContext(MoveContext);
-  const active = !!move?.movingId;
-  const droppable = useDroppable({ id: TOP_LEVEL, disabled: !move?.canDrop(null) });
+  const moveState = useContext(MoveContext);
+  const active = !!moveState?.movingId;
+  const droppable = useDroppable({ id: TOP_LEVEL_DROP_ID, disabled: !moveState?.canDrop(null) });
   if (!active) return null;
-  const targeted = move.keyboardTarget === null || droppable.isOver;
+  const targeted = moveState.keyboardTarget === null || droppable.isOver;
   return (
     <div
       ref={droppable.setNodeRef}
@@ -245,14 +243,14 @@ function isTyping(target: EventTarget) {
 }
 
 export function useRowMove(task: Task) {
-  const move = useContext(MoveContext);
+  const moveState = useContext(MoveContext);
   const done = task.status === "done";
-  const draggable = useDraggable({ id: task.id, disabled: !move });
+  const draggable = useDraggable({ id: task.id, disabled: !moveState });
   const droppable = useDroppable({
     id: task.id,
-    disabled: !move || done || !move.canDrop(task.id),
+    disabled: !moveState || done || !moveState.canDrop(task.id),
   });
-  if (!move) return undefined;
+  if (!moveState) return undefined;
 
   return {
     setNodeRef: (element: HTMLElement | null) => {
@@ -262,13 +260,13 @@ export function useRowMove(task: Task) {
     listeners: draggable.listeners,
     onKeyDown: (event: KeyboardEvent) => {
       const plain = !event.ctrlKey && !event.metaKey && !event.altKey;
-      if (event.key !== "m" || !plain || move.movingId || isTyping(event.target)) return;
+      if (event.key !== "m" || !plain || moveState.movingId || isTyping(event.target)) return;
       event.preventDefault();
-      move.startKeyboardMove(task);
+      moveState.startKeyboardMove(task);
     },
-    onClickCapture: move.swallowClickAfterDrag,
-    moving: move.movingId === task.id,
-    targeted: move.keyboardTarget === task.id || (droppable.isOver && !!move.dragging),
-    unavailable: !!move.dragging && (done || !move.canDrop(task.id)),
+    onClickCapture: moveState.swallowClickAfterDrag,
+    moving: moveState.movingId === task.id,
+    targeted: moveState.keyboardTarget === task.id || (droppable.isOver && !!moveState.dragging),
+    unavailable: !!moveState.dragging && (done || !moveState.canDrop(task.id)),
   };
 }

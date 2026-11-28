@@ -216,9 +216,9 @@ test("asks before completing a task with pending subtasks, and can complete only
   await userEvent.click(await screen.findByRole("checkbox", { name: "Move out: doing" }));
   const prompt = within(await screen.findByRole("dialog"));
   expect(prompt.getByText("Complete its 1 pending subtask too?")).toBeDefined();
-  await userEvent.click(prompt.getByRole("button", { name: "Only this task" }));
+  await userEvent.click(prompt.getByRole("button", { name: "only this task" }));
 
-  expect(await screen.findByRole("button", { name: /^completed/ })).toBeDefined();
+  expect(await screen.findByRole("button", { name: /completed$/ })).toBeDefined();
   expect(patches).toEqual([[move.id, { status: "done" }]]);
 });
 
@@ -235,9 +235,9 @@ test("completes a task with all its pending subtasks at any depth", async () => 
   await userEvent.click(await screen.findByRole("checkbox", { name: "Move out: doing" }));
   const prompt = within(await screen.findByRole("dialog"));
   expect(prompt.getByText("Complete its 3 pending subtasks too?")).toBeDefined();
-  await userEvent.click(prompt.getByRole("button", { name: "All" }));
+  await userEvent.click(prompt.getByRole("button", { name: "all" }));
 
-  await screen.findByRole("button", { name: /^completed/ });
+  await screen.findByRole("button", { name: /completed$/ });
   expect(patches.map(([id]) => id).toSorted()).toEqual(
     [move.id, freight.id, pack.id, kitchen.id].toSorted(),
   );
@@ -250,7 +250,7 @@ test("completes a task without asking when its subtasks are already done", async
 
   await userEvent.click(await screen.findByRole("checkbox", { name: "Move out: doing" }));
 
-  expect(await screen.findByRole("button", { name: /^completed/ })).toBeDefined();
+  expect(await screen.findByRole("button", { name: /completed$/ })).toBeDefined();
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(patches).toEqual([[move.id, { status: "done" }]]);
 });
@@ -354,4 +354,15 @@ test("puts a task back and says why when the API refuses the move", async () => 
   await waitFor(() =>
     expect(screen.queryByRole("list", { name: "Subtasks of Move out" })).toBeNull(),
   );
+});
+
+test("skips the tasks inside a collapsed task when moving with the keyboard", async () => {
+  servePatches([{ ...move }, { ...freight }, { ...passport }]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("button", { name: "Subtasks of Move out" }));
+  await pickUp("Renew passport");
+  await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+
+  expect(announced()).toContain('Move "Renew passport" to the top level');
 });

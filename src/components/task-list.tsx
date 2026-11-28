@@ -3,8 +3,8 @@ import { ChevronRight } from "lucide-react";
 import { createContext, useContext, useId, useMemo, useState } from "react";
 import type { Task } from "../api/generated";
 import { activationHandlers } from "../lib/activation";
-import { TaskMoveProvider, TopLevelDropZone, useRowMove } from "../lib/task-move";
-import { taskTree, type TaskNode } from "../lib/task-tree";
+import { hasSubtasks, taskTree, type TaskNode } from "../lib/task-tree";
+import { plural } from "../lib/plural";
 import { cn } from "../lib/utils";
 import { Markdown } from "./markdown";
 import { Badge } from "./ui/badge";
@@ -13,6 +13,7 @@ import { Card, CardContent } from "./ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { TaskCheckbox } from "./task-checkbox";
+import { TaskMoveProvider, TopLevelDropZone, useRowMove } from "./task-move";
 
 const priorityBadge = {
   1: "destructive",
@@ -84,6 +85,8 @@ function useCollapsedState(): Collapsed {
   };
 }
 
+const indent = (depth: number, extraCh = 0) => ({ paddingLeft: `${(depth - 1) * 2 + extraCh}ch` });
+
 function SubtasksToggle({
   task,
   expanded,
@@ -124,32 +127,32 @@ function TaskRow({ node }: { node: TaskNode }) {
   const openOnActivate = activationHandlers(
     () => void navigate({ to: "/tasks/$taskId", params: { taskId: task.id } }),
   );
-  const hasSubtasks = node.pending.length + node.completed.length > 0;
-  const expanded = hasSubtasks && !collapsed.isCollapsed(task.id);
-  const move = useRowMove(task);
+  const withSubtasks = hasSubtasks(node);
+  const expanded = withSubtasks && !collapsed.isCollapsed(task.id);
+  const rowMove = useRowMove(task);
 
   return (
     <li className={cn("min-w-0", done && "text-muted-foreground")}>
       <div
-        ref={move?.setNodeRef}
-        {...move?.listeners}
-        onKeyDown={move?.onKeyDown}
-        onClickCapture={move?.onClickCapture}
-        data-move-target={move?.targeted || undefined}
+        ref={rowMove?.setNodeRef}
+        {...rowMove?.listeners}
+        onKeyDown={rowMove?.onKeyDown}
+        onClickCapture={rowMove?.onClickCapture}
+        data-move-target={rowMove?.targeted || undefined}
         className={cn(
           "touch-manipulation",
-          move?.moving && "opacity-50",
-          move?.unavailable && "cursor-not-allowed opacity-50",
-          move?.targeted && "bg-accent/15 outline outline-accent -outline-offset-1",
+          rowMove?.moving && "opacity-50",
+          rowMove?.unavailable && "cursor-not-allowed opacity-50",
+          rowMove?.targeted && "bg-accent/15 outline outline-accent -outline-offset-1",
         )}
       >
         <div className="grid min-h-6 grid-cols-[auto_minmax(0,1fr)_3ch] items-start border-b border-dashed border-border hover:bg-accent/8 focus-within:bg-accent/8 lg:grid-cols-[auto_minmax(0,1fr)_5ch]">
           <div
             className="flex min-h-6 items-start self-stretch border-r border-border py-0.5"
-            style={{ paddingLeft: `${(depth - 1) * 2}ch` }}
+            style={indent(depth)}
           >
             <span className="flex w-[2ch] justify-center">
-              {hasSubtasks && (
+              {withSubtasks && (
                 <SubtasksToggle
                   task={task}
                   expanded={expanded}
@@ -198,7 +201,7 @@ function TaskRow({ node }: { node: TaskNode }) {
 }
 
 function completedLabel(count: number, parent: Task) {
-  return `Show ${count} completed ${count === 1 ? "subtask" : "subtasks"} of ${parent.title}`;
+  return `Show ${plural(count, "completed subtask")} of ${parent.title}`;
 }
 
 function CompletedGroup({ nodes, parent }: { nodes: TaskNode[]; parent?: TaskNode }) {
@@ -208,7 +211,7 @@ function CompletedGroup({ nodes, parent }: { nodes: TaskNode[]; parent?: TaskNod
       <CollapsibleTrigger asChild>
         <Button
           className="group w-full justify-start border-b border-dashed border-border"
-          style={{ paddingLeft: `${(depth - 1) * 2 + 1}ch` }}
+          style={indent(depth, 1)}
           type="button"
           variant="ghost"
           size="sm"
@@ -218,8 +221,7 @@ function CompletedGroup({ nodes, parent }: { nodes: TaskNode[]; parent?: TaskNod
             aria-hidden
             className="before:content-['[+]'] group-data-[state=open]:before:content-['[-]']"
           />
-          <span>completed</span>
-          <span className="ml-auto">{nodes.length}</span>
+          <span>{nodes.length} completed</span>
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -265,7 +267,7 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
   const collapsed = useCollapsedState();
 
   return (
-    <TaskMoveProvider tree={tree}>
+    <TaskMoveProvider tree={tree} isCollapsed={collapsed.isCollapsed}>
       <CollapsedContext value={collapsed}>
         <Card
           role="region"
@@ -294,7 +296,7 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
 
 export function TaskSubtasks({ node }: { node: TaskNode }) {
   const collapsed = useCollapsedState();
-  if (node.pending.length + node.completed.length === 0) return null;
+  if (!hasSubtasks(node)) return null;
   return (
     <CollapsedContext value={collapsed}>
       <div className="min-w-0 border border-border">

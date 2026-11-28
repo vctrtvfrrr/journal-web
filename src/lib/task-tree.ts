@@ -20,6 +20,8 @@ export const MAX_DEPTH = 4;
 
 const childrenOfNode = (node: TaskNode) => [...node.pending, ...node.completed];
 
+export const hasSubtasks = (node: TaskNode) => childrenOfNode(node).length > 0;
+
 function height(node: TaskNode): number {
   return 1 + Math.max(0, ...childrenOfNode(node).map(height));
 }
