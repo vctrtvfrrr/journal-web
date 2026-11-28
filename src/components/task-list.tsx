@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { createContext, useContext, useId, useMemo, useState } from "react";
 import type { Task } from "../api/generated";
 import { activationHandlers } from "../lib/activation";
+import { TaskMoveProvider, TopLevelDropZone, useRowMove } from "../lib/task-move";
 import { taskTree, type TaskNode } from "../lib/task-tree";
 import { cn } from "../lib/utils";
 import { Markdown } from "./markdown";
@@ -125,51 +126,66 @@ function TaskRow({ node }: { node: TaskNode }) {
   );
   const hasSubtasks = node.pending.length + node.completed.length > 0;
   const expanded = hasSubtasks && !collapsed.isCollapsed(task.id);
+  const move = useRowMove(task);
 
   return (
     <li className={cn("min-w-0", done && "text-muted-foreground")}>
-      <div className="grid min-h-6 grid-cols-[auto_minmax(0,1fr)_3ch] items-start border-b border-dashed border-border hover:bg-accent/8 focus-within:bg-accent/8 lg:grid-cols-[auto_minmax(0,1fr)_5ch]">
-        <div
-          className="flex min-h-6 items-start self-stretch border-r border-border py-0.5"
-          style={{ paddingLeft: `${(depth - 1) * 2}ch` }}
-        >
-          <span className="flex w-[2ch] justify-center">
-            {hasSubtasks && (
-              <SubtasksToggle
-                task={task}
-                expanded={expanded}
-                controls={subtasksId}
-                onToggle={() => collapsed.toggle(task.id)}
-              />
-            )}
-          </span>
-          <span className="flex w-[3ch] justify-center">
-            <TaskCheckbox task={task} />
-          </span>
-        </div>
-        <div
-          {...openOnActivate}
-          role="button"
-          tabIndex={0}
-          aria-labelledby={titleId}
-          aria-describedby={task.description ? descriptionId : undefined}
-          className="group flex min-w-0 cursor-pointer flex-col justify-center self-stretch px-[1ch] py-0.5 focus-visible:outline-offset-[-1px]"
-        >
-          <span id={titleId} className="wrap-anywhere group-hover:text-accent-ink">
-            <Markdown level="inline">{task.title}</Markdown>
-          </span>
-          {task.description && (
-            <span
-              id={descriptionId}
-              className="hidden truncate text-xs text-muted-foreground sm:block"
-            >
-              <Markdown level="inline">{task.description}</Markdown>
+      <div
+        ref={move?.setNodeRef}
+        {...move?.listeners}
+        onKeyDown={move?.onKeyDown}
+        onClickCapture={move?.onClickCapture}
+        data-move-target={move?.targeted || undefined}
+        className={cn(
+          "touch-manipulation",
+          move?.moving && "opacity-50",
+          move?.unavailable && "cursor-not-allowed opacity-50",
+          move?.targeted && "bg-accent/15 outline outline-accent -outline-offset-1",
+        )}
+      >
+        <div className="grid min-h-6 grid-cols-[auto_minmax(0,1fr)_3ch] items-start border-b border-dashed border-border hover:bg-accent/8 focus-within:bg-accent/8 lg:grid-cols-[auto_minmax(0,1fr)_5ch]">
+          <div
+            className="flex min-h-6 items-start self-stretch border-r border-border py-0.5"
+            style={{ paddingLeft: `${(depth - 1) * 2}ch` }}
+          >
+            <span className="flex w-[2ch] justify-center">
+              {hasSubtasks && (
+                <SubtasksToggle
+                  task={task}
+                  expanded={expanded}
+                  controls={subtasksId}
+                  onToggle={() => collapsed.toggle(task.id)}
+                />
+              )}
             </span>
-          )}
-        </div>
-        <div className="flex items-center justify-center self-stretch py-0.5">
-          <PriorityDot task={task} />
-          <PriorityBadge task={task} className="hidden lg:inline-flex" />
+            <span className="flex w-[3ch] justify-center">
+              <TaskCheckbox task={task} />
+            </span>
+          </div>
+          <div
+            {...openOnActivate}
+            role="button"
+            tabIndex={0}
+            aria-labelledby={titleId}
+            aria-describedby={task.description ? descriptionId : undefined}
+            className="group flex min-w-0 cursor-pointer flex-col justify-center self-stretch px-[1ch] py-0.5 focus-visible:outline-offset-[-1px]"
+          >
+            <span id={titleId} className="wrap-anywhere group-hover:text-accent-ink">
+              <Markdown level="inline">{task.title}</Markdown>
+            </span>
+            {task.description && (
+              <span
+                id={descriptionId}
+                className="hidden truncate text-xs text-muted-foreground sm:block"
+              >
+                <Markdown level="inline">{task.description}</Markdown>
+              </span>
+            )}
+          </div>
+          <div className="flex items-center justify-center self-stretch py-0.5">
+            <PriorityDot task={task} />
+            <PriorityBadge task={task} className="hidden lg:inline-flex" />
+          </div>
         </div>
       </div>
       {expanded && (
@@ -249,27 +265,30 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
   const collapsed = useCollapsedState();
 
   return (
-    <CollapsedContext value={collapsed}>
-      <Card
-        role="region"
-        aria-labelledby="tasks-list-heading"
-        label={
-          <span id="tasks-list-heading" role="heading" aria-level={2}>
-            Tasks
-          </span>
-        }
-        labelEnd={
-          <span aria-hidden className="text-sm">
-            {tree.pending.length}
-          </span>
-        }
-      >
-        {tree.pending.length === 0 && (
-          <CardContent className="text-muted-foreground">No pending tasks.</CardContent>
-        )}
-        <TaskLevel level={tree} />
-      </Card>
-    </CollapsedContext>
+    <TaskMoveProvider tree={tree}>
+      <CollapsedContext value={collapsed}>
+        <Card
+          role="region"
+          aria-labelledby="tasks-list-heading"
+          label={
+            <span id="tasks-list-heading" role="heading" aria-level={2}>
+              Tasks
+            </span>
+          }
+          labelEnd={
+            <span aria-hidden className="text-sm">
+              {tree.pending.length}
+            </span>
+          }
+        >
+          <TopLevelDropZone />
+          {tree.pending.length === 0 && (
+            <CardContent className="text-muted-foreground">No pending tasks.</CardContent>
+          )}
+          <TaskLevel level={tree} />
+        </Card>
+      </CollapsedContext>
+    </TaskMoveProvider>
   );
 }
 

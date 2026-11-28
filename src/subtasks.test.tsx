@@ -1,5 +1,5 @@
 import { beforeEach, expect, test } from "bun:test";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { Task, TaskChanges } from "./api/generated";
@@ -262,4 +262,96 @@ test("warns how many subtasks go with a deleted task", async () => {
   await userEvent.click(await screen.findByRole("button", { name: "Delete Move out" }));
 
   expect(await screen.findByText("Delete this task and its 3 subtasks?")).toBeDefined();
+});
+
+async function pickUp(title: string) {
+  const row = await screen.findByRole("button", { name: title });
+  row.focus();
+  await userEvent.keyboard("m");
+}
+
+function announced() {
+  return screen.getByRole("status", { name: "Move task" }).textContent;
+}
+
+test("moves a task under any other task with the keyboard", async () => {
+  const patches = servePatches([{ ...move }, { ...freight }, { ...pack }, { ...passport }]);
+  renderAppAt("/");
+
+  await pickUp("Renew passport");
+  expect(announced()).toContain('Move "Renew passport" to the top level');
+  await userEvent.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+  expect(announced()).toContain('Move "Renew passport" into "Pack"');
+  await userEvent.keyboard("{Enter}");
+
+  expect(
+    await within(await screen.findByRole("list", { name: "Subtasks of Pack" })).findByRole(
+      "button",
+      { name: "Renew passport" },
+    ),
+  ).toBeDefined();
+  expect(patches).toEqual([[passport.id, { parent_id: pack.id }]]);
+});
+
+test("moves a subtask up a level with Shift+Tab while moving", async () => {
+  const patches = servePatches([{ ...move }, { ...pack }, { ...kitchen }]);
+  renderAppAt("/");
+
+  await pickUp("Kitchen");
+  expect(announced()).toContain('Move "Kitchen" into "Pack"');
+  await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+  expect(announced()).toContain('Move "Kitchen" into "Move out"');
+  await userEvent.keyboard("{Enter}");
+
+  await waitFor(() => expect(patches).toEqual([[kitchen.id, { parent_id: move.id }]]));
+});
+
+test("offers only targets within four levels and outside the moved task", async () => {
+  servePatches([{ ...move }, { ...pack }, { ...kitchen }, { ...passport }]);
+  renderAppAt("/");
+
+  await pickUp("Move out");
+  await userEvent.keyboard("{ArrowDown}");
+  expect(announced()).toContain('Move "Move out" into "Renew passport"');
+  await userEvent.keyboard("{ArrowDown}");
+  expect(announced()).toContain('Move "Move out" to the top level');
+});
+
+test("cancels a keyboard move with Escape", async () => {
+  const patches = servePatches([{ ...move }, { ...passport }]);
+  renderAppAt("/");
+
+  await pickUp("Renew passport");
+  await userEvent.keyboard("{ArrowDown}{Escape}");
+
+  expect(announced()).toContain("Move cancelled");
+  expect(patches).toEqual([]);
+  expect(screen.queryByRole("list", { name: "Subtasks of Move out" })).toBeNull();
+});
+
+test("puts a task back and says why when the API refuses the move", async () => {
+  serveTree([{ ...move }, { ...passport }]);
+  api.use(
+    http.patch("/api/tasks/:id", () =>
+      HttpResponse.json(
+        {
+          type: "about:blank",
+          title: "Unprocessable Content",
+          status: 422,
+          detail: "The parent Task cannot be used.",
+          errors: [{ pointer: "#/parent_id", detail: "Tasks nest up to four levels deep." }],
+        },
+        { status: 422, headers: { "content-type": "application/problem+json" } },
+      ),
+    ),
+  );
+  renderAppAt("/");
+
+  await pickUp("Renew passport");
+  await userEvent.keyboard("{ArrowDown}{Enter}");
+
+  expect(await screen.findByText("Tasks nest up to four levels deep.")).toBeDefined();
+  await waitFor(() =>
+    expect(screen.queryByRole("list", { name: "Subtasks of Move out" })).toBeNull(),
+  );
 });
