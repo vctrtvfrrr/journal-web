@@ -2,7 +2,7 @@ import { beforeEach, expect, test } from "bun:test";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import type { Task } from "./api/generated";
+import type { Task, TaskChanges } from "./api/generated";
 import { aTask, api, device } from "../test/api";
 import { renderAppAt } from "../test/render";
 
@@ -190,4 +190,76 @@ test("shows why the API refused a new subtask", async () => {
   );
 
   expect(await dialog.findByText(/Tasks nest up to four levels deep/)).toBeDefined();
+});
+
+function servePatches(tasks: Task[]) {
+  const patches: [string, TaskChanges][] = [];
+  serveTree(tasks);
+  api.use(
+    http.patch("/api/tasks/:id", async ({ params, request }) => {
+      const body = (await request.json()) as TaskChanges;
+      patches.push([params.id as string, body]);
+      const task = tasks.find((candidate) => candidate.id === params.id)!;
+      Object.assign(task, body);
+      return HttpResponse.json(task);
+    }),
+  );
+  return patches;
+}
+
+const working = (task: Task): Task => ({ ...task, status: "doing" });
+
+test("asks before completing a task with pending subtasks, and can complete only the task", async () => {
+  const patches = servePatches([working(move), { ...freight }, { ...inspect }]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Move out: doing" }));
+  const prompt = within(await screen.findByRole("dialog"));
+  expect(prompt.getByText("Complete its 1 pending subtask too?")).toBeDefined();
+  await userEvent.click(prompt.getByRole("button", { name: "Only this task" }));
+
+  expect(await screen.findByRole("button", { name: /^completed/ })).toBeDefined();
+  expect(patches).toEqual([[move.id, { status: "done" }]]);
+});
+
+test("completes a task with all its pending subtasks at any depth", async () => {
+  const patches = servePatches([
+    working(move),
+    { ...freight },
+    working(pack),
+    { ...kitchen },
+    { ...inspect },
+  ]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Move out: doing" }));
+  const prompt = within(await screen.findByRole("dialog"));
+  expect(prompt.getByText("Complete its 3 pending subtasks too?")).toBeDefined();
+  await userEvent.click(prompt.getByRole("button", { name: "All" }));
+
+  await screen.findByRole("button", { name: /^completed/ });
+  expect(patches.map(([id]) => id).toSorted()).toEqual(
+    [move.id, freight.id, pack.id, kitchen.id].toSorted(),
+  );
+  expect(patches.every(([, body]) => body.status === "done")).toBe(true);
+});
+
+test("completes a task without asking when its subtasks are already done", async () => {
+  const patches = servePatches([working(move), { ...inspect }]);
+  renderAppAt("/");
+
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Move out: doing" }));
+
+  expect(await screen.findByRole("button", { name: /^completed/ })).toBeDefined();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(patches).toEqual([[move.id, { status: "done" }]]);
+});
+
+test("warns how many subtasks go with a deleted task", async () => {
+  serveTree([move, freight, pack, kitchen]);
+  renderAppAt(`/tasks/${move.id}`);
+
+  await userEvent.click(await screen.findByRole("button", { name: "Delete Move out" }));
+
+  expect(await screen.findByText("Delete this task and its 3 subtasks?")).toBeDefined();
 });

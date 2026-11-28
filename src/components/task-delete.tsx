@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { taskTree } from "../lib/task-tree";
 import { useState } from "react";
 import type { Task } from "../api/generated";
 import { deleteTaskMutation, listTasksQueryKey } from "../api/generated/@tanstack/react-query.gen";
@@ -16,6 +17,8 @@ export function TaskDelete({
 }) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const tasks = queryClient.getQueryData<Task[]>(listTasksQueryKey());
+  const subtasks = tasks ? taskTree(tasks).subtasks(task.id).length : 0;
   const remove = useMutation({
     ...deleteTaskMutation(),
     meta: { showsOwnError: true },
@@ -43,7 +46,11 @@ export function TaskDelete({
         </Button>
       }
       title="Delete task?"
-      description="Remove this task from your list?"
+      description={
+        subtasks === 0
+          ? "Remove this task from your list?"
+          : `Delete this task and its ${subtasks} ${subtasks === 1 ? "subtask" : "subtasks"}?`
+      }
       confirmLabel="delete task"
       status={remove}
       onConfirm={() => remove.mutate({ path: { id: task.id } })}
